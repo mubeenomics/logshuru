@@ -1,11 +1,30 @@
 # logshuru
 
-A **versatile Bash logger** inspired by Python’s [loguru](https://github.com/Delgan/loguru).
+A **versatile Bash logger** inspired by Python’s [loguru](https://github.com/Delgan/loguru). It Provides **structured**, **colored logging** with log levels, filtering, and flexible usage a **CLI tool** (standalone executable) or a **sourceable library** (to add logging to your own Bash scripts)
 
-Provides **structured**, **colored logging** with log levels, filtering, and flexible usage as:
+## Table of Contents
 
-- CLI tool (standalone executable)
-- Sourceable library (to add logging to your own Bash scripts)
+- [Features](#features)
+- [Installation](#installation)
+  - [Requirements](#requirements)
+  - [Quick Install](#quick-install)
+- [Usage](#usage)
+  - [As a CLI Tool](#as-a-cli-tool)
+  - [As a Library](#as-a-library)
+- [Output Format](#output-format)
+- [Log Levels](#log-levels)
+  - [Using Environment Variable](#using-environment-variable)
+  - [Using set\_log\_level Function](#using-set_log_level-function)
+  - [Get Current Log Level](#get-current-log-level)
+- [Examples](#examples)
+  - [Basic Script with Logging](#basic-script-with-logging)
+  - [Error Handling](#error-handling)
+  - [Production vs Development](#production-vs-development)
+- [Configuration](#configuration)
+  - [Default Log Level](#default-log-level)
+  - [Colors](#colors)
+- [Contributing](#contributing)
+- [Acknowledgments](#acknowledgments)
 
 ## Features
 
@@ -225,7 +244,7 @@ Colors are defined using ANSI escape codes and work on most modern terminals. If
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to submit a pull request.
 
 ## Acknowledgments
 
