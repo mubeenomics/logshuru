@@ -1,6 +1,9 @@
 # logshuru
 
-A versatile Bash logger inspired by Python’s [loguru](https://github.com/Delgan/loguru). It provides structured, colored logging with log levels, filtering, context information, and flexible usage a CLI tool (standalone executable) or a sourceable library (to add logging to your own Bash scripts).
+logshuru is a versatile logging utility for Bash, inspired by Python’s [loguru](https://github.com/Delgan/loguru).
+It provides structured and color-coded log messages with contextual details like timestamps, source file, and line number.
+You can use it as a standalone CLI tool or source it as a library in your scripts, making it ideal for both small shell scripts and production pipelines.
+With 8 configurable log levels, level filtering, and zero dependencies, logshuru helps bring clarity and consistency to your Bash logging.
 
 ## Table of Contents
 
