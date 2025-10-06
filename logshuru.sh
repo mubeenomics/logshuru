@@ -2,7 +2,7 @@
 
 # logshuru.sh: A versatile Bash logger inspired by Python's loguru
 # Usable as both a CLI tool and sourceable library
-# Includes log level filtering and colored output
+# Includes log level filtering, colored output and contextual information
 
 # Constants
 LOGGER_VERSION="1.0.0"
@@ -151,6 +151,7 @@ set_log_level() {
 	if [[ -n "${LOG_LEVELS[$new_level]}" ]]; then
 		export LOG_LEVEL="$new_level"
 		current_log_level="$new_level"
+		log INFO "Current log level: $current_log_level"
 		return 0
 	else
 		echo "Warning: '$new_level' is not a valid log level." >&2
@@ -183,8 +184,8 @@ main() {
 
 	if [[ $# -lt 2 ]]; then
 		echo -e "${COLORS["RED_B"]}Error: Missing required arguments${COLORS["END"]}" >&2
-		echo "Usage: $0 <log_level> \"<message>\"" >&2
-		echo "Try '$0 --help' for more information." >&2
+		echo "Usage: $(basename "$0") <log_level> \"<message>\"" >&2
+		echo "Try '$(basename "$0") --help' for more information." >&2
 		exit 1
 	fi
 
