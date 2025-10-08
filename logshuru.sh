@@ -61,6 +61,9 @@ show_help() {
 	echo -e "${COLORS["WHITE_B"]}Log Level Filtering:${COLORS["END"]}"
 	echo -e "  export LOG_LEVEL=DEBUG"
 	echo -e "  set_log_level DEBUG"
+	echo
+	echo -e "${COLORS["WHITE_B"]}Author:${COLORS["END"]} Mohammed Mubeen Shaikh"
+    echo -e "${COLORS["WHITE_B"]}Contact:${COLORS["END"]} mubeenomics@gmail.com"
 }
 
 # Check if log level should be printed
@@ -189,9 +192,6 @@ if is_sourced; then
 	export -f log
 	export -f get_log_level
 	export -f set_log_level
-
-	log SUCCESS "Logging functions loaded successfully!"
-	log INFO "Current log level: $(get_log_level)"
 else
 	main "$@"
 fi
