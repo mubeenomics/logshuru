@@ -1,11 +1,7 @@
 #!/bin/bash
 
-# logshuru.sh: A versatile Bash logger inspired by Python's loguru
-# Usable as both a CLI tool and sourceable library
-# Includes log level filtering, colored output and contextual information
-
 # Constants
-LOGGER_VERSION="1.0.0"
+VERSION="1.0.0"
 DEFAULT_LOG_LEVEL="PROCESS"
 
 # ANSI color definitions
@@ -40,16 +36,22 @@ current_log_level=${LOG_LEVEL:-$DEFAULT_LOG_LEVEL}
 
 # Display help
 show_help() {
-	echo -e "${COLORS["WHITE_B"]}$0${COLORS["END"]} - A command-line tool and sourceable library for structured, colored logging in Bash"
+	echo -e "${COLORS["WHITE_B"]}$(basename "$0")${COLORS["END"]} - A Bash logger for color-coded logging with multiple log levels and context info."
 	echo
 	echo -e "${COLORS["WHITE_B"]}Usage:${COLORS["END"]}"
-	echo -e "  $0 <log_level> \"<message>\""
-	echo -e "  source $0 (then use log function)"
+	echo -e "  As CLI tool:\t$(basename "$0") <log_level> <message>"
+	echo -e "  As library:\tsource $(basename "$0")"
+	echo -e "             \tlog <log_level> <message>"
+	echo
+	echo -e "${COLORS["WHITE_B"]}Examples:${COLORS["END"]}"
+	echo -e "  $(basename "$0") INFO \"Application started\""
+	echo -e "  $(basename "$0") ERROR \"Failed to connect to database\""
+	echo -e "  source $(basename "$0") && log DEBUG \"Debug message\""
 	echo
 	echo -e "${COLORS["WHITE_B"]}Available log levels:${COLORS["END"]}"
 	echo -e "  ${COLORS["CYAN_B"]}TRACE${COLORS["END"]}     - Detailed tracing information"
 	echo -e "  ${COLORS["BLUE_B"]}DEBUG${COLORS["END"]}     - Debugging messages"
-	echo -e "  ${COLORS["PURPLE"]}PROCESS${COLORS["END"]}   - Process-level messages"
+	echo -e "  ${COLORS["PURPLE"]}PROCESS${COLORS["END"]}   - Process-level messages (Default)"
 	echo -e "  ${COLORS["WHITE_B"]}INFO${COLORS["END"]}      - General information"
 	echo -e "  ${COLORS["GREEN_B"]}SUCCESS${COLORS["END"]}   - Successful operation"
 	echo -e "  ${COLORS["YELLOW_B"]}WARNING${COLORS["END"]}   - Warning conditions"
@@ -57,20 +59,8 @@ show_help() {
 	echo -e "  ${COLORS["RBWT"]}CRITICAL${COLORS["END"]}  - Critical conditions"
 	echo
 	echo -e "${COLORS["WHITE_B"]}Log Level Filtering:${COLORS["END"]}"
-	echo -e "  Set minimum log level: export LOG_LEVEL=\"${COLORS["YELLOW_B"]}WARNING${COLORS["END"]}\""
-	echo -e "  Or call function: set_log_level \"${COLORS["BLUE_B"]}DEBUG${COLORS["END"]}\""
-	echo -e "  Current log level: ${COLORS["GREEN_B"]}$current_log_level${COLORS["END"]}"
-	echo
-	echo -e "${COLORS["WHITE_B"]}Examples:${COLORS["END"]}"
-	echo -e "  $0 INFO \"Application started\""
-	echo -e "  $0 ERROR \"Failed to connect to database\""
-	echo -e "  source $0 && log \"DEBUG\" \"Debug message\""
-	echo
-	echo -e "${COLORS["WHITE_B"]}Installation:${COLORS["END"]}"
-	echo -e "  1. Make executable: chmod +x $0"
-	echo -e "  2. Move to PATH: sudo mv $0 /usr/local/bin/logger"
-	echo
-	echo -e "${COLORS["WHITE_B"]}Note: Requires Bash 4.0 or later${COLORS["END"]}"
+	echo -e "  export LOG_LEVEL=DEBUG"
+	echo -e "  set_log_level DEBUG"
 }
 
 # Check if log level should be printed
@@ -178,13 +168,13 @@ main() {
 	fi
 
 	if [[ "$1" == "-v" || "$1" == "--version" ]]; then
-		echo "$0 v$LOGGER_VERSION"
+		echo "$0 v$VERSION"
 		exit 0
 	fi
 
 	if [[ $# -lt 2 ]]; then
 		echo -e "${COLORS["RED_B"]}Error: Missing required arguments${COLORS["END"]}" >&2
-		echo "Usage: $(basename "$0") <log_level> \"<message>\"" >&2
+		echo "Usage: $(basename "$0") <log_level> <message>" >&2
 		echo "Try '$(basename "$0") --help' for more information." >&2
 		exit 1
 	fi
