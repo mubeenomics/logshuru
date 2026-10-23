@@ -1,0 +1,3 @@
+# Follow annotated helper/fixture sources relative to the file being checked.
+external-sources=true
+source-path=SCRIPTDIR

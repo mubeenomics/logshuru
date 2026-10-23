@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Bash checks (Ubuntu 22.04)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    env:
+      BATS_VERSION: 1.11.1
+      SHELLCHECK_VERSION: 0.10.0
+      SHFMT_VERSION: 3.10.0
+      LC_ALL: C.UTF-8
+      TZ: UTC
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Install pinned development tools
+        run: |
+          tools_dir="$RUNNER_TEMP/logshuru-tools"
+          mkdir -p "$tools_dir/bin"
+
+          curl --fail --silent --show-error --location \
+            "https://github.com/bats-core/bats-core/archive/refs/tags/v${BATS_VERSION}.tar.gz" \
+            --output "$tools_dir/bats.tar.gz"
+          tar -xzf "$tools_dir/bats.tar.gz" -C "$tools_dir"
+          "$tools_dir/bats-core-${BATS_VERSION}/install.sh" "$tools_dir"
+
+          curl --fail --silent --show-error --location \
+            "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" \
+            --output "$tools_dir/shellcheck.tar.xz"
+          tar -xJf "$tools_dir/shellcheck.tar.xz" -C "$tools_dir"
+          install -m 755 "$tools_dir/shellcheck-v${SHELLCHECK_VERSION}/shellcheck" "$tools_dir/bin/shellcheck"
+
+          curl --fail --silent --show-error --location \
+            "https://github.com/mvdan/sh/releases/download/v${SHFMT_VERSION}/shfmt_v${SHFMT_VERSION}_linux_amd64" \
+            --output "$tools_dir/bin/shfmt"
+          chmod +x "$tools_dir/bin/shfmt"
+          printf '%s\n' "$tools_dir/bin" >> "$GITHUB_PATH"
+
+      - name: Report environment and tool versions
+        run: |
+          bash --version
+          date --version
+          shellcheck --version
+          shfmt --version
+          bats --version
+
+      - name: Check Bash syntax
+        run: |
+          for file in logshuru.sh tests/*.bash tests/fixtures/*.bash; do
+            bash -n "$file"
+          done
+
+      - name: Run ShellCheck
+        run: shellcheck logshuru.sh tests/*.bats tests/*.bash tests/fixtures/*.bash
+
+      - name: Check Bash formatting
+        run: shfmt -ln bash -d logshuru.sh tests/*.bash tests/fixtures/*.bash
+
+      - name: Check Bats formatting
+        run: shfmt -ln bats -d tests/*.bats
+
+      - name: Run Bats tests
+        run: bats tests
