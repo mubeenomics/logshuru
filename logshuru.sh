@@ -33,6 +33,15 @@ declare -A LOG_LEVELS=(
 
 # Initialize current log level
 current_log_level=${LOG_LEVEL:-$DEFAULT_LOG_LEVEL}
+current_log_level=${current_log_level^^}
+if [[ -z "${LOG_LEVELS[$current_log_level]:-}" ]]; then
+	printf 'Invalid LOG_LEVEL: %s\nValid levels: %s\n' "$LOG_LEVEL" "${!LOG_LEVELS[*]}" >&2
+	if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+		return 1
+	else
+		exit 1
+	fi
+fi
 
 # Display help
 show_help() {
@@ -63,7 +72,7 @@ show_help() {
 	echo -e "  set_log_level DEBUG"
 	echo
 	echo -e "${COLORS["WHITE_B"]}Author:${COLORS["END"]} Mohammed Mubeen Shaikh"
-    echo -e "${COLORS["WHITE_B"]}Contact:${COLORS["END"]} mubeenomics@gmail.com"
+	echo -e "${COLORS["WHITE_B"]}Contact:${COLORS["END"]} mubeenomics@gmail.com"
 }
 
 # Check if log level should be printed
@@ -80,17 +89,13 @@ should_log() {
 
 # Logging function
 log() {
+	if [[ $# -lt 2 ]]; then
+		printf 'Error: Missing required arguments\nUsage: log <log_level> <message>\n' >&2
+		return 1
+	fi
+
 	local level="${1^^}"
 	local message="${*:2}"
-
-	if ! should_log "$level"; then return 0; fi
-
-	local date file_path
-	date=$(date +"%F %T.%3N")
-	file_path="$(basename "${BASH_SOURCE[1]:-cli}")"
-
-	local func_name="${FUNCNAME[1]:-main}"
-	local line_no="${BASH_LINENO[0]:-0}"
 
 	local color=""
 	local level_padded=""
@@ -135,20 +140,49 @@ log() {
 		;;
 	esac
 
-	echo -e "${COLORS["GREEN"]}$date${COLORS["END"]} | $color$level_padded${COLORS["END"]} | ${COLORS["CYAN"]}$file_path${COLORS["END"]}:${COLORS["CYAN"]}$func_name${COLORS["END"]}:${COLORS["CYAN"]}$line_no${COLORS["END"]} - $color$message${COLORS["END"]}"
+	if ! should_log "$level"; then return 0; fi
+
+	local date file_path
+	date=$(date +"%F %T.%3N")
+	local func_name line_no
+	if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+		# A separate CLI process cannot inspect its invoking shell's call stack.
+		file_path=cli
+		func_name=cli
+		line_no=0
+	else
+		file_path="$(basename "${BASH_SOURCE[1]:-unknown}")"
+		func_name="${FUNCNAME[1]:-main}"
+		line_no="${BASH_LINENO[0]:-0}"
+	fi
+
+	# Interpret escapes only in color definitions; render message and context literally.
+	printf '%b%s%b | %b%s%b | %b%s%b:%b%s%b:%b%s%b - %b%s%b\n' \
+		"${COLORS["GREEN"]}" "$date" "${COLORS["END"]}" \
+		"$color" "$level_padded" "${COLORS["END"]}" \
+		"${COLORS["CYAN"]}" "$file_path" "${COLORS["END"]}" \
+		"${COLORS["CYAN"]}" "$func_name" "${COLORS["END"]}" \
+		"${COLORS["CYAN"]}" "$line_no" "${COLORS["END"]}" \
+		"$color" "$message" "${COLORS["END"]}"
 }
 
 # Set log level
 set_log_level() {
-	local new_level="${1^^}"
-	if [[ -n "${LOG_LEVELS[$new_level]}" ]]; then
+	if [[ $# -ne 1 ]]; then
+		printf 'Error: Expected exactly one log level\nUsage: set_log_level <log_level>\n' >&2
+		return 1
+	fi
+
+	local new_level="$1"
+	new_level=${new_level^^}
+	if [[ -n "$new_level" && -n "${LOG_LEVELS[$new_level]:-}" ]]; then
 		export LOG_LEVEL="$new_level"
 		current_log_level="$new_level"
+		# Propagate notification failures even when the caller handles our status.
 		log INFO "Current log level: $current_log_level"
-		return 0
 	else
-		echo "Warning: '$new_level' is not a valid log level." >&2
-		echo "Valid levels: " "${!LOG_LEVELS[@]}" >&2
+		printf "Warning: '%s' is not a valid log level.\nValid levels: %s\n" \
+			"$new_level" "${!LOG_LEVELS[*]}" >&2
 		return 1
 	fi
 }
@@ -165,14 +199,14 @@ is_sourced() {
 
 # CLI entrypoint
 main() {
-	if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+	if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
 		show_help
-		exit 0
+		return
 	fi
 
-	if [[ "$1" == "-v" || "$1" == "--version" ]]; then
+	if [[ "${1:-}" == "-v" || "${1:-}" == "--version" ]]; then
 		echo "$0 v$VERSION"
-		exit 0
+		return
 	fi
 
 	if [[ $# -lt 2 ]]; then
@@ -187,11 +221,7 @@ main() {
 	log "$log_level" "$message"
 }
 
-# Export functions if sourced
-if is_sourced; then
-	export -f log
-	export -f get_log_level
-	export -f set_log_level
-else
+# Child Bash processes must source the library to initialize functions and state.
+if ! is_sourced; then
 	main "$@"
 fi
