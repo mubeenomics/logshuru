@@ -13,6 +13,7 @@ setup() {
 	export LOG_LEVEL=TRACE LOGSHURU_COLOR=never LOGSHURU_OUTPUT=stdout
 	export LOGSHURU_TIMESTAMP_FORMAT=stamp LOGSHURU_TZ=UTC
 	export LOGSHURU_FILE="$BATS_TEST_TMPDIR/events.log"
+	export LOGSHURU_FORMAT=text
 }
 
 @test "file logging duplicates the same record in CLI and library modes" {

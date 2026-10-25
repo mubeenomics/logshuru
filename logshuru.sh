@@ -92,6 +92,20 @@ case "$logshuru_file" in
 *) logshuru_file="$PWD/$logshuru_file" ;;
 esac
 
+logshuru_format=${LOGSHURU_FORMAT:-text}
+logshuru_format=${logshuru_format,,}
+case "$logshuru_format" in
+text | json) ;;
+*)
+	printf 'Invalid LOGSHURU_FORMAT: %s\nValid formats: text json\n' "$LOGSHURU_FORMAT" >&2
+	if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+		return 1
+	else
+		exit 1
+	fi
+	;;
+esac
+
 # Explicit overrides apply only to date, leaving the caller's TZ unchanged.
 logshuru_timestamp() {
 	case "$logshuru_timezone" in
@@ -108,6 +122,54 @@ logshuru_color_enabled() {
 	never) return 1 ;;
 	auto) [[ -t "${1:-1}" && -z "${NO_COLOR:-}" && "${TERM:-}" != dumb ]] ;;
 	esac
+}
+
+# Escape a UTF-8 string into a caller-local destination variable (Bash 4 compatible).
+# Byte iteration preserves Unicode and lets us reject malformed UTF-8 explicitly.
+logshuru_json_string() {
+	local LC_ALL=C
+	local _json_input="$1" _json_result="" _json_character _json_code _json_escape _json_index
+	local _json_remaining=0 _json_min=128 _json_max=191
+	for ((_json_index = 0; _json_index < ${#_json_input}; _json_index++)); do
+		_json_character=${_json_input:_json_index:1}
+		printf -v _json_code '%d' "'$_json_character"
+		if ((_json_remaining > 0)); then
+			((_json_code >= _json_min && _json_code <= _json_max)) || return 1
+			_json_remaining=$((_json_remaining - 1))
+			_json_min=128
+			_json_max=191
+		elif ((_json_code >= 128)); then
+			_json_min=128
+			_json_max=191
+			if ((_json_code >= 194 && _json_code <= 223)); then
+				_json_remaining=1
+			elif ((_json_code >= 224 && _json_code <= 239)); then
+				_json_remaining=2
+				if ((_json_code == 224)); then _json_min=160; fi
+				if ((_json_code == 237)); then _json_max=159; fi
+			elif ((_json_code >= 240 && _json_code <= 244)); then
+				_json_remaining=3
+				if ((_json_code == 240)); then _json_min=144; fi
+				if ((_json_code == 244)); then _json_max=143; fi
+			else
+				return 1
+			fi
+		fi
+		case "$_json_code" in
+		34) _json_result+='\"' ;;
+		92) _json_result+="\\\\" ;;
+		*)
+			if ((_json_code < 32)); then
+				printf -v _json_escape '\\u%04x' "$_json_code"
+				_json_result+="$_json_escape"
+			else
+				_json_result+="$_json_character"
+			fi
+			;;
+		esac
+	done
+	((_json_remaining == 0)) || return 1
+	printf -v "$2" '"%s"' "$_json_result"
 }
 
 # Display help
@@ -162,6 +224,10 @@ show_help() {
 	echo -e "${help_colors["WHITE_B"]}File logging:${help_colors["END"]}"
 	echo "  LOGSHURU_FILE: append plain-text copies alongside stream output (default: off)"
 	echo "  Relative paths are anchored at startup/sourcing; parent directories must exist."
+	echo
+	echo -e "${help_colors["WHITE_B"]}Format:${help_colors["END"]}"
+	echo "  LOGSHURU_FORMAT=text|json (default: text)"
+	echo "  JSON emits one UTF-8 object per event, without logger colors."
 	echo
 	echo -e "${help_colors["WHITE_B"]}Author:${help_colors["END"]} Mohammed Mubeen Shaikh"
 	echo -e "${help_colors["WHITE_B"]}Contact:${help_colors["END"]} mubeenomics@gmail.com"
@@ -264,23 +330,42 @@ log() {
 		line_no="${BASH_LINENO[0]:-0}"
 	fi
 
-	local timestamp_color="${COLORS["GREEN"]}" context_color="${COLORS["CYAN"]}" reset="${COLORS["END"]}"
-	if ! logshuru_color_enabled "$output_fd"; then
-		color=""
-		timestamp_color=""
-		context_color=""
-		reset=""
+	local stream_record file_record
+	if [[ "$logshuru_format" == json ]]; then
+		local json_timestamp json_level json_file json_function json_message
+		if ! logshuru_json_string "$date" json_timestamp ||
+			! logshuru_json_string "$level" json_level ||
+			! logshuru_json_string "$file_path" json_file ||
+			! logshuru_json_string "$func_name" json_function ||
+			! logshuru_json_string "$message" json_message; then
+			printf 'Error: JSON fields must contain valid UTF-8\n' >&2
+			return 1
+		fi
+		printf -v stream_record '{"timestamp":%s,"level":%s,"file":%s,"function":%s,"line":%s,"message":%s}\n' \
+			"$json_timestamp" "$json_level" "$json_file" "$json_function" "$line_no" "$json_message"
+		file_record="$stream_record"
+	else
+		local timestamp_color="${COLORS["GREEN"]}" context_color="${COLORS["CYAN"]}" reset="${COLORS["END"]}"
+		if ! logshuru_color_enabled "$output_fd"; then
+			color=""
+			timestamp_color=""
+			context_color=""
+			reset=""
+		fi
+		# Interpret escapes only in colors; render message and context literally.
+		printf -v stream_record '%b%s%b | %b%s%b | %b%s%b:%b%s%b:%b%s%b - %b%s%b\n' \
+			"$timestamp_color" "$date" "$reset" \
+			"$color" "$level_padded" "$reset" \
+			"$context_color" "$file_path" "$reset" \
+			"$context_color" "$func_name" "$reset" \
+			"$context_color" "$line_no" "$reset" \
+			"$color" "$message" "$reset"
+		printf -v file_record '%s | %s | %s:%s:%s - %s\n' \
+			"$date" "$level_padded" "$file_path" "$func_name" "$line_no" "$message"
 	fi
 
-	# Interpret escapes only in color definitions; render message and context literally.
 	local output_status=0
-	if ! printf '%b%s%b | %b%s%b | %b%s%b:%b%s%b:%b%s%b - %b%s%b\n' \
-		"$timestamp_color" "$date" "$reset" \
-		"$color" "$level_padded" "$reset" \
-		"$context_color" "$file_path" "$reset" \
-		"$context_color" "$func_name" "$reset" \
-		"$context_color" "$line_no" "$reset" \
-		"$color" "$message" "$reset" >&"$output_fd"; then
+	if ! printf '%s' "$stream_record" >&"$output_fd"; then
 		output_status=1
 	fi
 
@@ -289,8 +374,7 @@ log() {
 		if [[ -e "$logshuru_file" && ! -f "$logshuru_file" ]]; then
 			printf 'Error: Log file is not a regular file: %s\n' "$logshuru_file" >&2
 			output_status=1
-		elif ! printf '%s | %s | %s:%s:%s - %s\n' \
-			"$date" "$level_padded" "$file_path" "$func_name" "$line_no" "$message" >>"$logshuru_file"; then
+		elif ! printf '%s' "$file_record" >>"$logshuru_file"; then
 			printf 'Error: Failed to append log file: %s\n' "$logshuru_file" >&2
 			output_status=1
 		fi

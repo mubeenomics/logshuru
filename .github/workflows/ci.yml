@@ -63,6 +63,7 @@ jobs:
           shfmt --version
           bats --version
           script --version
+          jq --version
 
       - name: Check Bash syntax
         run: |

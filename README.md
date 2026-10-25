@@ -16,6 +16,7 @@ With 8 configurable log levels, level filtering, and a lightweight Bash-based ru
   - [As a Library](#as-a-library)
   - [Using Strict Mode](#using-strict-mode)
 - [Output Format](#output-format)
+  - [JSON Lines Output](#json-lines-output)
 - [Log Levels](#log-levels)
   - [Using Environment Variable](#using-environment-variable)
   - [Using set\_log\_level Function](#using-set_log_level-function)
@@ -46,6 +47,7 @@ With 8 configurable log levels, level filtering, and a lightweight Bash-based ru
 - **Level Filtering** - Control what gets logged with configurable minimum log levels
 - **Dual Mode** - Use as a CLI tool or source as a library in your scripts
 - **Optional File Logging** - Append uncolored copies alongside stdout/stderr records
+- **Optional JSON Lines** - Machine-readable records with Bash-only UTF-8 serialization
 - **Lightweight Runtime** - Bash plus `date` and `basename`; no language package installation required
 
 ## Installation
@@ -100,7 +102,8 @@ when set; [timestamp settings](#timestamps) can override the format and zone.
 
 The quick-install instructions below additionally use `curl`, `chmod`, `sudo`,
 and `mv`. These are installation tools, not logging dependencies. The regression
-suite requires Bats-core 1.5.0 or later; see [Running Tests](#running-tests).
+suite requires Bats-core 1.5.0 or later and jq 1.6 or later for JSON validation;
+see [Running Tests](#running-tests).
 
 ### Quick Install
 
@@ -199,7 +202,7 @@ are joined with spaces, so `log INFO first second` logs `first second`.
 Missing arguments return `1` with usage information on stderr, including when
 Bash nounset mode (`set -u`) is enabled.
 
-Each log entry includes:
+Each entry in the default text format includes:
 
 ```text
 2025-10-01 14:32:45.123 | INFO | script.sh:main:42 - Your message here
@@ -231,6 +234,66 @@ and call `log INFO "Started"` from a script to obtain that script's location.
 If a wrapper function calls `log`, the location identifies the call inside the
 wrapper. Functions defined in other sourced files report their defining file.
 Line `0` is an unavailable-location marker, not a real source line.
+
+### JSON Lines Output
+
+Set `LOGSHURU_FORMAT=json` before starting the CLI or sourcing the library.
+The default is `text`; unset or empty values retain text output. Format names
+are case-insensitive, and invalid nonempty values fail initialization with
+status `1`. Like the other output settings, the active format is captured at
+startup/sourcing.
+
+```bash
+LOGSHURU_FORMAT=json LOGSHURU_TZ=UTC \
+    LOGSHURU_TIMESTAMP_FORMAT='%Y-%m-%dT%H:%M:%S.%3NZ' \
+    logshuru INFO "Alignment completed"
+```
+
+Each emitted event is one complete JSON object followed by a newline:
+
+```json
+{"timestamp":"2026-10-23T10:30:00.123Z","level":"INFO","file":"cli","function":"cli","line":0,"message":"Alignment completed"}
+```
+
+| Field | JSON type | Meaning |
+| ----- | --------- | ------- |
+| `timestamp` | string | Timestamp generated using the existing format/timezone settings |
+| `level` | string | Uppercase level name without padding |
+| `file` | string | Caller basename, `cli` for standalone invocation, or `unknown` when no source filename is available |
+| `function` | string | Immediate caller function, `main` for top-level sourced calls, or `cli` for standalone invocation |
+| `line` | number | One-based caller line; `0` marks an unavailable location |
+| `message` | string | Original message, with multiple message arguments joined as in text mode |
+
+JSON does not change timestamp defaults: without custom settings, timestamps
+still use `%F %T.%3N` in inherited `TZ`/system local time. The example above
+explicitly selects UTC and an ISO-style representation. JSON records contain no
+logger-generated colors, even with `LOGSHURU_COLOR=always`.
+
+Serialization is implemented entirely in Bash and adds no runtime dependency.
+Quotes, backslashes, and ASCII control characters are escaped; multiline messages
+remain one physical JSON line and decode back to their original text. Valid UTF-8
+is preserved, including user-supplied escape characters represented as JSON
+escapes. Malformed UTF-8 in any string field returns `1` with a diagnostic and
+emits neither stream nor file record. Bash strings and command arguments cannot
+represent embedded NUL bytes.
+
+Routing, level filtering, source context, strict-mode behavior, and independent
+destination failures are unchanged. If `LOGSHURU_FILE` is enabled, it appends
+the exact same JSON Lines records as the selected stream. Help, version/getter
+output, and human-readable diagnostics keep their existing interfaces; only log
+records are JSON. Log files contain records, not those diagnostics.
+
+For library use and optional parsing with `jq`:
+
+```bash
+export LOGSHURU_FORMAT=json LOGSHURU_TZ=UTC
+export LOGSHURU_FILE="$PWD/run.jsonl"
+source logshuru
+log INFO "Starting workflow"
+
+# jq is a consumer/test tool, not a requirement for emitting JSON.
+jq -c 'select(.level == "ERROR")' run.jsonl
+```
 
 ## Log Levels
 
@@ -547,10 +610,12 @@ log SUCCESS "Sample completed"
 
 Unset or empty `LOGSHURU_FILE` disables file logging. Enabling it **duplicates**
 records; it does not replace or alter `LOGSHURU_OUTPUT` routing. File copies use
-the same timestamp, padded level, source context, and message as the stream copy,
+the same timestamp, level, source context, and message as the stream copy,
 but contain no logger-generated ANSI colors, even with `LOGSHURU_COLOR=always`.
-Literal message content, including user-supplied escape sequences and newlines,
-is preserved. Each record ends with a newline.
+Text copies retain the padded level. In JSON mode, the file receives the exact
+same JSON object as the stream. Literal message content, including user-supplied
+escape sequences and newlines, is preserved by the selected format. Each record
+ends with a newline.
 
 The configured path is captured at startup/sourcing. Relative paths are anchored
 to that initialization directory, so a later `cd` does not redirect the parent
@@ -595,6 +660,11 @@ Debian/Ubuntu), or follow the
 Check the installed version with `bats --version`; version 1.11.1 was used to
 verify this suite.
 
+JSON validity and round-trip tests additionally require `jq` 1.6 or later
+(for example, `sudo apt install jq` on Debian/Ubuntu). The CI runner provides
+it and reports its version. This is a test/consumer dependency only; the logger
+does not invoke jq, Python, or Node.js to serialize records.
+
 From the repository root, run:
 
 ```bash
@@ -612,6 +682,7 @@ The baseline suite covers:
 | `tests/output.bats` | All levels in all three stream modes for CLI/library calls (48 routing cases), selected/unused descriptor failures, filtering, initialization, child processes, data separation, and selected-stream colors |
 | `tests/timestamps.bats` | Default/custom formats, UTC and named timezones, inherited environment, initialization, timezone database selection, literal rendering, and timestamp-generation failures |
 | `tests/files.bats` | Append/duplication semantics, plain file copies, literal content/paths, filtering, metadata consistency, initialization, child processes, relative paths, and independent destination failures |
+| `tests/json.bats` | Schema/types, all control characters, UTF-8 boundaries and malformed input, message/metadata round trips, JSON Lines framing, routing, file copies, initialization, and destination failures |
 | `tests/configuration.bats` | Environment defaults, normalization, invalid initialization, setter exports, and unchanged settings after rejected input |
 | `tests/arguments.bats` | Missing/empty arguments, multiple message arguments, setter argument counts, and help/version flags, including nounset mode |
 | `tests/child_shells.bats` | Explicit initialization, inherited thresholds, state isolation, and subshell usage |
@@ -683,7 +754,7 @@ shfmt -ln bats -w tests/*.bats
 
 ### Running All Checks
 
-With Bats, ShellCheck, and shfmt installed, run these commands from the repository
+With Bats, jq, ShellCheck, and shfmt installed, run these commands from the repository
 root. Syntax errors, lint findings, formatting differences, or failing tests
 produce a nonzero status:
 
@@ -715,9 +786,9 @@ Development tools are pinned to:
 
 The workflow installs these tools in the runner's temporary directory and prints
 the Bash, coreutils, and tool versions in its logs. Tests run with `LC_ALL=C.UTF-8`
-and `TZ=UTC`. The runner also reports the util-linux `script` version used for
-terminal tests. Repository access is read-only, and superseded runs on the same
-workflow/ref are cancelled.
+and `TZ=UTC`. The runner also reports util-linux `script` for terminal tests and
+`jq` for JSON validation. Repository access is read-only, and superseded runs on
+the same workflow/ref are cancelled.
 
 To reproduce its checks locally, install the versions above and use
 [Running All Checks](#running-all-checks). GitHub starts the workflow once the
