@@ -74,15 +74,15 @@ jobs:
 
       - name: Check Bash syntax
         run: |
-          for file in logshuru.sh tests/*.bash tests/fixtures/*.bash; do
+          for file in logshuru.sh examples/*.sh tests/*.bash tests/fixtures/*.bash; do
             bash -n "$file"
           done
 
       - name: Run ShellCheck
-        run: shellcheck logshuru.sh tests/*.bats tests/*.bash tests/fixtures/*.bash
+        run: shellcheck logshuru.sh examples/*.sh tests/*.bats tests/*.bash tests/fixtures/*.bash
 
       - name: Check Bash formatting
-        run: shfmt -ln bash -d logshuru.sh tests/*.bash tests/fixtures/*.bash
+        run: shfmt -ln bash -d logshuru.sh examples/*.sh tests/*.bash tests/fixtures/*.bash
 
       - name: Check Bats formatting
         run: shfmt -ln bats -d tests/*.bats
@@ -148,7 +148,7 @@ jobs:
           bats --version
           jq --version
           script --version
-          for file in logshuru.sh tests/*.bash tests/fixtures/*.bash; do
+          for file in logshuru.sh examples/*.sh tests/*.bash tests/fixtures/*.bash; do
             bash -n "$file"
           done
           bats tests
