@@ -11,6 +11,7 @@ source "$BATS_TEST_DIRNAME/test_helper.bash"
 setup() {
 	LOGSHURU="$BATS_TEST_DIRNAME/../logshuru.sh"
 	export LOG_LEVEL=TRACE LOGSHURU_COLOR=never
+	unset LOGSHURU_TIMESTAMP_FORMAT LOGSHURU_TZ
 	unset LOGSHURU_OUTPUT
 }
 

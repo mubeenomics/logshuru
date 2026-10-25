@@ -72,6 +72,29 @@ stdout | stderr | split) ;;
 	;;
 esac
 
+logshuru_timestamp_format=${LOGSHURU_TIMESTAMP_FORMAT:-'%F %T.%3N'}
+logshuru_timezone=${LOGSHURU_TZ:-}
+logshuru_zoneinfo_dir=${TZDIR:-/usr/share/zoneinfo}
+if [[ -n "$logshuru_timezone" && "$logshuru_timezone" != UTC ]] &&
+	[[ ! "$logshuru_timezone" =~ ^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+)*$ ||
+		! -f "$logshuru_zoneinfo_dir/$logshuru_timezone" ]]; then
+	printf 'Invalid LOGSHURU_TZ: %s\nUse UTC or an installed IANA timezone name.\n' "$LOGSHURU_TZ" >&2
+	if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+		return 1
+	else
+		exit 1
+	fi
+fi
+
+# Explicit overrides apply only to date, leaving the caller's TZ unchanged.
+logshuru_timestamp() {
+	case "$logshuru_timezone" in
+	UTC) TZ=UTC0 date +"$logshuru_timestamp_format" ;;
+	"") date +"$logshuru_timestamp_format" ;;
+	*) TZDIR="$logshuru_zoneinfo_dir" TZ=":$logshuru_timezone" date +"$logshuru_timestamp_format" ;;
+	esac
+}
+
 # Detect the actual destination at emission time, including per-call redirection.
 logshuru_color_enabled() {
 	case "$logshuru_color_mode" in
@@ -125,6 +148,10 @@ show_help() {
 	echo "  LOGSHURU_OUTPUT=stdout|stderr|split (default: stdout)"
 	echo "  Split sends WARNING and above to stderr; lower levels to stdout."
 	echo "  Usage errors use stderr; help, version, and get_log_level use stdout."
+	echo
+	echo -e "${help_colors["WHITE_B"]}Timestamps:${help_colors["END"]}"
+	echo '  LOGSHURU_TIMESTAMP_FORMAT: GNU date format (default: %F %T.%3N)'
+	echo "  LOGSHURU_TZ: UTC or installed IANA name (default: inherited TZ/local time)"
 	echo
 	echo -e "${help_colors["WHITE_B"]}Author:${help_colors["END"]} Mohammed Mubeen Shaikh"
 	echo -e "${help_colors["WHITE_B"]}Contact:${help_colors["END"]} mubeenomics@gmail.com"
@@ -211,7 +238,10 @@ log() {
 	esac
 
 	local date file_path
-	date=$(date +"%F %T.%3N")
+	if ! date=$(logshuru_timestamp); then
+		printf 'Error: Failed to generate log timestamp\n' >&2
+		return 1
+	fi
 	local func_name line_no
 	if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
 		# A separate CLI process cannot inspect its invoking shell's call stack.

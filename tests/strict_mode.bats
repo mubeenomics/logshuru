@@ -10,6 +10,7 @@ setup() {
 	export LOG_LEVEL=PROCESS
 	export LOGSHURU_COLOR=always
 	export LOGSHURU_OUTPUT=stdout
+	unset LOGSHURU_TIMESTAMP_FORMAT LOGSHURU_TZ
 }
 
 @test "strict-mode library initialization supports unset and empty configuration" {

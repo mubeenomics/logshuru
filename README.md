@@ -28,6 +28,7 @@ With 8 configurable log levels, level filtering, and a lightweight Bash-based ru
   - [Default Log Level](#default-log-level)
   - [Colors](#colors)
   - [Output Streams](#output-streams)
+  - [Timestamps](#timestamps)
 - [Contributing](#contributing)
   - [Running Tests](#running-tests)
   - [Static Analysis](#static-analysis)
@@ -57,6 +58,10 @@ With 8 configurable log levels, level filtering, and a lightweight Bash-based ru
   millisecond formatting. GNU coreutils provides a suitable `date`.
 - **`basename` on `PATH`:** used for source filenames and CLI help/usage text.
   GNU coreutils provides this command too.
+- **Timezone database for named overrides:** `LOGSHURU_TZ=Asia/Kolkata`, for
+  example, requires that zone to be installed under `/usr/share/zoneinfo` (or
+  the directory selected by `TZDIR`). Linux distributions typically provide it
+  through `tzdata`. The explicit `UTC` override needs no timezone database.
 
 ANSI-compatible terminals display the colors. A terminal is not required to run
 the logger. The default color mode, `auto`, omits logger-generated ANSI sequences
@@ -86,7 +91,8 @@ date +"%F %T.%3N"
 ```
 
 The last command should produce `YYYY-MM-DD HH:MM:SS.mmm`, with three numeric
-fractional-second digits. Timestamps use local time, honoring `TZ` when set.
+fractional-second digits. By default timestamps use local time, honoring `TZ`
+when set; [timestamp settings](#timestamps) can override the format and zone.
 
 #### Installation and development tools
 
@@ -470,6 +476,57 @@ successfully emitted ERROR or CRITICAL message still returns `0`. A failure to
 write to the selected stream returns nonzero. Filtered messages write to neither
 stream and continue to return `0`.
 
+### Timestamps
+
+Set timestamp options before starting the CLI or sourcing the library:
+
+| Setting | Default | Behavior |
+| ------- | ------- | -------- |
+| `LOGSHURU_TIMESTAMP_FORMAT` | `%F %T.%3N` | GNU `date` format, preserving the existing millisecond timestamp by default |
+| `LOGSHURU_TZ` | Unset | `UTC` or an installed IANA timezone name, such as `Asia/Kolkata`; when unset, retain normal local-time/inherited `TZ` behavior |
+
+```bash
+# UTC with an ISO-style timestamp; Z correctly denotes UTC here.
+LOGSHURU_TZ=UTC LOGSHURU_TIMESTAMP_FORMAT='%Y-%m-%dT%H:%M:%SZ' \
+    logshuru INFO "UTC event"
+
+# Named timezone with an explicit numeric offset.
+LOGSHURU_TZ=Asia/Kolkata LOGSHURU_TIMESTAMP_FORMAT='%F %T.%3N %z' \
+    logshuru INFO "Local workflow event"
+
+# Library configuration is read when sourced.
+export LOGSHURU_TZ=UTC
+export LOGSHURU_TIMESTAMP_FORMAT='%Y-%m-%dT%H:%M:%S.%3NZ'
+source logshuru
+log INFO "Starting processing"
+```
+
+Unset or empty format values select the default. Formats are passed as a single
+argument to GNU `date`, not evaluated as shell code or as a `printf` format.
+Individual directives follow GNU `date`'s interpretation; logshuru does not
+independently validate them. Format text is passed without case conversion or
+whitespace trimming, and the timestamp is rendered literally. As with the
+existing renderer, trailing newlines from `date` output are removed.
+
+Unset or empty `LOGSHURU_TZ` leaves the current `TZ`/system timezone behavior
+unchanged. Explicit overrides accept case-sensitive installed zone names or the
+special value `UTC`; arbitrary POSIX timezone expressions and absolute zone-file
+paths are not accepted in this setting. Existing applications using POSIX `TZ`
+values can continue doing so without a `LOGSHURU_TZ` override. Invalid explicit
+zones fail initialization with status `1` and a diagnostic on stderr, including
+when sourcing; they do not silently fall back to UTC.
+
+Explicit format and timezone settings are captured at startup/sourcing. Named
+overrides also capture `TZDIR`, defaulting to `/usr/share/zoneinfo`. Overrides
+apply only to timestamp generation and never change the caller's `TZ` or
+`TZDIR`. Exported settings are available when child Bash processes source the
+library themselves.
+
+If timestamp generation fails, logging returns nonzero with a diagnostic on
+stderr and emits no incomplete log record. Filtered messages do not invoke
+`date`. Colors, source context, and output-stream selection work with custom
+timestamps as usual.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a pull request.
@@ -501,6 +558,7 @@ The baseline suite covers:
 | `tests/messages.bats` | Literal backslashes, percent signs, quotes, shell metacharacters, tabs, Unicode, multiline content, whitespace, and every level's ANSI color |
 | `tests/colors.bats` | Color modes, actual terminals and redirected output, `NO_COLOR` precedence, `TERM=dumb`, initialization errors, and independent stdout/stderr detection |
 | `tests/output.bats` | All levels in all three stream modes for CLI/library calls (48 routing cases), selected/unused descriptor failures, filtering, initialization, child processes, data separation, and selected-stream colors |
+| `tests/timestamps.bats` | Default/custom formats, UTC and named timezones, inherited environment, initialization, timezone database selection, literal rendering, and timestamp-generation failures |
 | `tests/configuration.bats` | Environment defaults, normalization, invalid initialization, setter exports, and unchanged settings after rejected input |
 | `tests/arguments.bats` | Missing/empty arguments, multiple message arguments, setter argument counts, and help/version flags, including nounset mode |
 | `tests/child_shells.bats` | Explicit initialization, inherited thresholds, state isolation, and subshell usage |

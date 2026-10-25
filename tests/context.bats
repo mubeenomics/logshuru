@@ -11,6 +11,7 @@ setup() {
 	export LOG_LEVEL=PROCESS
 	export LOGSHURU_COLOR=always
 	export LOGSHURU_OUTPUT=stdout
+	unset LOGSHURU_TIMESTAMP_FORMAT LOGSHURU_TZ
 }
 
 strip_context_colors() {
