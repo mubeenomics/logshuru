@@ -1,11 +1,24 @@
 #!/bin/bash
 
-# Constants
-VERSION="1.0.0"
-DEFAULT_LOG_LEVEL="PROCESS"
+# Global associative arrays require declare -g (introduced in Bash 4.2).
+if ((BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 2))); then
+	printf 'Error: logshuru requires Bash 4.2 or later\n' >&2
+	if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+		return 1
+	else
+		exit 1
+	fi
+fi
+
+# Internal state and helpers use a reserved project namespace.
+_logshuru_version="2.0.0-dev"
+_logshuru_default_log_level="PROCESS"
+_logshuru_valid_levels='TRACE DEBUG PROCESS INFO SUCCESS WARNING ERROR CRITICAL'
 
 # ANSI color definitions
-declare -A COLORS=(
+# Separate declaration from assignment for Bash 4.2's function-sourcing behavior.
+declare -gA _logshuru_colors
+_logshuru_colors=(
 	["RED_B"]='\e[1;31m'    # Bold Red
 	["BLUE_B"]='\e[1;34m'   # Bold Blue
 	["CYAN"]='\e[0;36m'     # Cyan (normal weight)
@@ -20,7 +33,8 @@ declare -A COLORS=(
 )
 
 # Log level definitions
-declare -A LOG_LEVELS=(
+declare -gA _logshuru_levels
+_logshuru_levels=(
 	["TRACE"]=0
 	["DEBUG"]=1
 	["PROCESS"]=2
@@ -32,10 +46,10 @@ declare -A LOG_LEVELS=(
 )
 
 # Initialize current log level
-current_log_level=${LOG_LEVEL:-$DEFAULT_LOG_LEVEL}
-current_log_level=${current_log_level^^}
-if [[ -z "${LOG_LEVELS[$current_log_level]:-}" ]]; then
-	printf 'Invalid LOG_LEVEL: %s\nValid levels: %s\n' "$LOG_LEVEL" "${!LOG_LEVELS[*]}" >&2
+_logshuru_current_log_level=${LOG_LEVEL:-$_logshuru_default_log_level}
+_logshuru_current_log_level=${_logshuru_current_log_level^^}
+if [[ -z "${_logshuru_levels[$_logshuru_current_log_level]:-}" ]]; then
+	printf 'Invalid LOG_LEVEL: %s\nValid levels: %s\n' "$LOG_LEVEL" "$_logshuru_valid_levels" >&2
 	if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
 		return 1
 	else
@@ -44,9 +58,9 @@ if [[ -z "${LOG_LEVELS[$current_log_level]:-}" ]]; then
 fi
 
 # New output settings are read at initialization, like LOG_LEVEL.
-logshuru_color_mode=${LOGSHURU_COLOR:-auto}
-logshuru_color_mode=${logshuru_color_mode,,}
-case "$logshuru_color_mode" in
+_logshuru_color_mode=${LOGSHURU_COLOR:-auto}
+_logshuru_color_mode=${_logshuru_color_mode,,}
+case "$_logshuru_color_mode" in
 auto | always | never) ;;
 *)
 	printf 'Invalid LOGSHURU_COLOR: %s\nValid modes: auto always never\n' "$LOGSHURU_COLOR" >&2
@@ -58,9 +72,9 @@ auto | always | never) ;;
 	;;
 esac
 
-logshuru_output_mode=${LOGSHURU_OUTPUT:-stdout}
-logshuru_output_mode=${logshuru_output_mode,,}
-case "$logshuru_output_mode" in
+_logshuru_output_mode=${LOGSHURU_OUTPUT:-stdout}
+_logshuru_output_mode=${_logshuru_output_mode,,}
+case "$_logshuru_output_mode" in
 stdout | stderr | split) ;;
 *)
 	printf 'Invalid LOGSHURU_OUTPUT: %s\nValid modes: stdout stderr split\n' "$LOGSHURU_OUTPUT" >&2
@@ -72,12 +86,12 @@ stdout | stderr | split) ;;
 	;;
 esac
 
-logshuru_timestamp_format=${LOGSHURU_TIMESTAMP_FORMAT:-'%F %T.%3N'}
-logshuru_timezone=${LOGSHURU_TZ:-}
-logshuru_zoneinfo_dir=${TZDIR:-/usr/share/zoneinfo}
-if [[ -n "$logshuru_timezone" && "$logshuru_timezone" != UTC ]] &&
-	[[ ! "$logshuru_timezone" =~ ^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+)*$ ||
-		! -f "$logshuru_zoneinfo_dir/$logshuru_timezone" ]]; then
+_logshuru_timestamp_format=${LOGSHURU_TIMESTAMP_FORMAT:-'%F %T.%3N'}
+_logshuru_timezone=${LOGSHURU_TZ:-}
+_logshuru_zoneinfo_dir=${TZDIR:-/usr/share/zoneinfo}
+if [[ -n "$_logshuru_timezone" && "$_logshuru_timezone" != UTC ]] &&
+	[[ ! "$_logshuru_timezone" =~ ^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+)*$ ||
+		! -f "$_logshuru_zoneinfo_dir/$_logshuru_timezone" ]]; then
 	printf 'Invalid LOGSHURU_TZ: %s\nUse UTC or an installed IANA timezone name.\n' "$LOGSHURU_TZ" >&2
 	if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
 		return 1
@@ -86,15 +100,15 @@ if [[ -n "$logshuru_timezone" && "$logshuru_timezone" != UTC ]] &&
 	fi
 fi
 
-logshuru_file=${LOGSHURU_FILE:-}
-case "$logshuru_file" in
+_logshuru_file=${LOGSHURU_FILE:-}
+case "$_logshuru_file" in
 "" | /*) ;;
-*) logshuru_file="$PWD/$logshuru_file" ;;
+*) _logshuru_file="$PWD/$_logshuru_file" ;;
 esac
 
-logshuru_format=${LOGSHURU_FORMAT:-text}
-logshuru_format=${logshuru_format,,}
-case "$logshuru_format" in
+_logshuru_format=${LOGSHURU_FORMAT:-text}
+_logshuru_format=${_logshuru_format,,}
+case "$_logshuru_format" in
 text | json) ;;
 *)
 	printf 'Invalid LOGSHURU_FORMAT: %s\nValid formats: text json\n' "$LOGSHURU_FORMAT" >&2
@@ -107,17 +121,17 @@ text | json) ;;
 esac
 
 # Explicit overrides apply only to date, leaving the caller's TZ unchanged.
-logshuru_timestamp() {
-	case "$logshuru_timezone" in
-	UTC) TZ=UTC0 date +"$logshuru_timestamp_format" ;;
-	"") date +"$logshuru_timestamp_format" ;;
-	*) TZDIR="$logshuru_zoneinfo_dir" TZ=":$logshuru_timezone" date +"$logshuru_timestamp_format" ;;
+_logshuru_timestamp() {
+	case "$_logshuru_timezone" in
+	UTC) TZ=UTC0 date +"$_logshuru_timestamp_format" ;;
+	"") date +"$_logshuru_timestamp_format" ;;
+	*) TZDIR="$_logshuru_zoneinfo_dir" TZ=":$_logshuru_timezone" date +"$_logshuru_timestamp_format" ;;
 	esac
 }
 
 # Detect the actual destination at emission time, including per-call redirection.
-logshuru_color_enabled() {
-	case "$logshuru_color_mode" in
+_logshuru_color_enabled() {
+	case "$_logshuru_color_mode" in
 	always) return 0 ;;
 	never) return 1 ;;
 	auto) [[ -t "${1:-1}" && -z "${NO_COLOR:-}" && "${TERM:-}" != dumb ]] ;;
@@ -126,7 +140,7 @@ logshuru_color_enabled() {
 
 # Escape a UTF-8 string into a caller-local destination variable (Bash 4 compatible).
 # Byte iteration preserves Unicode and lets us reject malformed UTF-8 explicitly.
-logshuru_json_string() {
+_logshuru_json_string() {
 	local LC_ALL=C
 	local _json_input="$1" _json_result="" _json_character _json_code _json_escape _json_index
 	local _json_remaining=0 _json_min=128 _json_max=191
@@ -173,25 +187,25 @@ logshuru_json_string() {
 }
 
 # Display help
-show_help() {
+_logshuru_show_help() {
 	local -A help_colors=()
 	local name
-	for name in "${!COLORS[@]}"; do help_colors[$name]=""; done
-	if logshuru_color_enabled 1; then
-		for name in "${!COLORS[@]}"; do help_colors[$name]="${COLORS[$name]}"; done
+	for name in "${!_logshuru_colors[@]}"; do help_colors[$name]=""; done
+	if _logshuru_color_enabled 1; then
+		for name in "${!_logshuru_colors[@]}"; do help_colors[$name]="${_logshuru_colors[$name]}"; done
 	fi
 
-	echo -e "${help_colors["WHITE_B"]}$(basename "$0")${help_colors["END"]} - A Bash logger for color-coded logging with multiple log levels and context info."
+	echo -e "${help_colors["WHITE_B"]}${0##*/}${help_colors["END"]} - A Bash logger for color-coded logging with multiple log levels and context info."
 	echo
 	echo -e "${help_colors["WHITE_B"]}Usage:${help_colors["END"]}"
-	echo -e "  As CLI tool:\t$(basename "$0") <log_level> <message>"
-	echo -e "  As library:\tsource $(basename "$0")"
+	echo -e "  As CLI tool:\t${0##*/} <log_level> <message>"
+	echo -e "  As library:\tsource ${0##*/}"
 	echo -e "             \tlog <log_level> <message>"
 	echo
 	echo -e "${help_colors["WHITE_B"]}Examples:${help_colors["END"]}"
-	echo -e "  $(basename "$0") INFO \"Application started\""
-	echo -e "  $(basename "$0") ERROR \"Failed to connect to database\""
-	echo -e "  source $(basename "$0") && log DEBUG \"Debug message\""
+	echo -e "  ${0##*/} INFO \"Application started\""
+	echo -e "  ${0##*/} ERROR \"Failed to connect to database\""
+	echo -e "  source ${0##*/} && log DEBUG \"Debug message\""
 	echo
 	echo -e "${help_colors["WHITE_B"]}Available log levels:${help_colors["END"]}"
 	echo -e "  ${help_colors["CYAN_B"]}TRACE${help_colors["END"]}     - Detailed tracing information"
@@ -234,13 +248,13 @@ show_help() {
 }
 
 # Check if log level should be printed
-should_log() {
+_logshuru_should_log() {
 	local message_level=$1
-	local current_level_num=${LOG_LEVELS[$current_log_level]}
-	local message_level_num=${LOG_LEVELS[$message_level]}
+	local current_level_num=${_logshuru_levels[$_logshuru_current_log_level]}
+	local message_level_num=${_logshuru_levels[$message_level]}
 
-	[[ -z "$current_level_num" ]] && current_level_num=${LOG_LEVELS[$DEFAULT_LOG_LEVEL]}
-	[[ -z "$message_level_num" ]] && message_level_num=${LOG_LEVELS["PROCESS"]}
+	[[ -z "$current_level_num" ]] && current_level_num=${_logshuru_levels[$_logshuru_default_log_level]}
+	[[ -z "$message_level_num" ]] && message_level_num=${_logshuru_levels["PROCESS"]}
 
 	[[ $message_level_num -ge $current_level_num ]]
 }
@@ -252,6 +266,7 @@ log() {
 		return 1
 	fi
 
+	local IFS=' '
 	local level="${1^^}"
 	local message="${*:2}"
 
@@ -260,53 +275,53 @@ log() {
 
 	case "$level" in
 	"TRACE")
-		color="${COLORS["CYAN_B"]}"
+		color="${_logshuru_colors["CYAN_B"]}"
 		level_padded="TRACE   "
 		;;
 	"DEBUG")
-		color="${COLORS["BLUE_B"]}"
+		color="${_logshuru_colors["BLUE_B"]}"
 		level_padded="DEBUG   "
 		;;
 	"PROCESS")
-		color="${COLORS["PURPLE"]}"
+		color="${_logshuru_colors["PURPLE"]}"
 		level_padded="PROCESS "
 		;;
 	"INFO")
-		color="${COLORS["WHITE_B"]}"
+		color="${_logshuru_colors["WHITE_B"]}"
 		level_padded="INFO    "
 		;;
 	"SUCCESS")
-		color="${COLORS["GREEN_B"]}"
+		color="${_logshuru_colors["GREEN_B"]}"
 		level_padded="SUCCESS "
 		;;
 	"WARNING")
-		color="${COLORS["YELLOW_B"]}"
+		color="${_logshuru_colors["YELLOW_B"]}"
 		level_padded="WARNING "
 		;;
 	"ERROR")
-		color="${COLORS["RED_B"]}"
+		color="${_logshuru_colors["RED_B"]}"
 		level_padded="ERROR   "
 		;;
 	"CRITICAL")
-		color="${COLORS["RBWT"]}"
+		color="${_logshuru_colors["RBWT"]}"
 		level_padded="CRITICAL"
 		;;
 	*)
 		local error_color="" error_reset=""
-		if logshuru_color_enabled 2; then
-			error_color="${COLORS["RED_B"]}"
-			error_reset="${COLORS["END"]}"
+		if _logshuru_color_enabled 2; then
+			error_color="${_logshuru_colors["RED_B"]}"
+			error_reset="${_logshuru_colors["END"]}"
 		fi
 		printf '%bInvalid log level:%b %s\nValid levels: %s\n' \
-			"$error_color" "$error_reset" "$level" "${!LOG_LEVELS[*]}" >&2
+			"$error_color" "$error_reset" "$level" "$_logshuru_valid_levels" >&2
 		return 1
 		;;
 	esac
 
-	if ! should_log "$level"; then return 0; fi
+	if ! _logshuru_should_log "$level"; then return 0; fi
 
 	local output_fd=1
-	case "$logshuru_output_mode" in
+	case "$_logshuru_output_mode" in
 	stderr) output_fd=2 ;;
 	split)
 		case "$level" in WARNING | ERROR | CRITICAL) output_fd=2 ;; esac
@@ -314,7 +329,7 @@ log() {
 	esac
 
 	local date file_path
-	if ! date=$(logshuru_timestamp); then
+	if ! date=$(_logshuru_timestamp); then
 		printf 'Error: Failed to generate log timestamp\n' >&2
 		return 1
 	fi
@@ -325,19 +340,20 @@ log() {
 		func_name=cli
 		line_no=0
 	else
-		file_path="$(basename "${BASH_SOURCE[1]:-unknown}")"
+		file_path="${BASH_SOURCE[1]:-unknown}"
+		file_path="${file_path##*/}"
 		func_name="${FUNCNAME[1]:-main}"
 		line_no="${BASH_LINENO[0]:-0}"
 	fi
 
 	local stream_record file_record
-	if [[ "$logshuru_format" == json ]]; then
+	if [[ "$_logshuru_format" == json ]]; then
 		local json_timestamp json_level json_file json_function json_message
-		if ! logshuru_json_string "$date" json_timestamp ||
-			! logshuru_json_string "$level" json_level ||
-			! logshuru_json_string "$file_path" json_file ||
-			! logshuru_json_string "$func_name" json_function ||
-			! logshuru_json_string "$message" json_message; then
+		if ! _logshuru_json_string "$date" json_timestamp ||
+			! _logshuru_json_string "$level" json_level ||
+			! _logshuru_json_string "$file_path" json_file ||
+			! _logshuru_json_string "$func_name" json_function ||
+			! _logshuru_json_string "$message" json_message; then
 			printf 'Error: JSON fields must contain valid UTF-8\n' >&2
 			return 1
 		fi
@@ -345,8 +361,8 @@ log() {
 			"$json_timestamp" "$json_level" "$json_file" "$json_function" "$line_no" "$json_message"
 		file_record="$stream_record"
 	else
-		local timestamp_color="${COLORS["GREEN"]}" context_color="${COLORS["CYAN"]}" reset="${COLORS["END"]}"
-		if ! logshuru_color_enabled "$output_fd"; then
+		local timestamp_color="${_logshuru_colors["GREEN"]}" context_color="${_logshuru_colors["CYAN"]}" reset="${_logshuru_colors["END"]}"
+		if ! _logshuru_color_enabled "$output_fd"; then
 			color=""
 			timestamp_color=""
 			context_color=""
@@ -370,12 +386,12 @@ log() {
 	fi
 
 	# Attempt both destinations independently, even if the stream write failed.
-	if [[ -n "$logshuru_file" ]]; then
-		if [[ -e "$logshuru_file" && ! -f "$logshuru_file" ]]; then
-			printf 'Error: Log file is not a regular file: %s\n' "$logshuru_file" >&2
+	if [[ -n "$_logshuru_file" ]]; then
+		if [[ -e "$_logshuru_file" && ! -f "$_logshuru_file" ]]; then
+			printf 'Error: Log file is not a regular file: %s\n' "$_logshuru_file" >&2
 			output_status=1
-		elif ! printf '%s' "$file_record" >>"$logshuru_file"; then
-			printf 'Error: Failed to append log file: %s\n' "$logshuru_file" >&2
+		elif ! printf '%s' "$file_record" >>"$_logshuru_file"; then
+			printf 'Error: Failed to append log file: %s\n' "$_logshuru_file" >&2
 			output_status=1
 		fi
 	fi
@@ -391,58 +407,56 @@ set_log_level() {
 
 	local new_level="$1"
 	new_level=${new_level^^}
-	if [[ -n "$new_level" && -n "${LOG_LEVELS[$new_level]:-}" ]]; then
+	if [[ -n "$new_level" && -n "${_logshuru_levels[$new_level]:-}" ]]; then
 		export LOG_LEVEL="$new_level"
-		current_log_level="$new_level"
+		_logshuru_current_log_level="$new_level"
 		# Propagate notification failures even when the caller handles our status.
-		log INFO "Current log level: $current_log_level"
+		log INFO "Current log level: $_logshuru_current_log_level"
 	else
 		printf "Warning: '%s' is not a valid log level.\nValid levels: %s\n" \
-			"$new_level" "${!LOG_LEVELS[*]}" >&2
+			"$new_level" "$_logshuru_valid_levels" >&2
 		return 1
 	fi
 }
 
 # Get current log level
 get_log_level() {
-	echo "$current_log_level"
+	echo "$_logshuru_current_log_level"
 }
 
 # Check if script is sourced
-is_sourced() {
+_logshuru_is_sourced() {
 	[[ "${BASH_SOURCE[0]}" != "${0}" ]]
 }
 
 # CLI entrypoint
-main() {
+_logshuru_main() {
 	if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-		show_help
+		_logshuru_show_help
 		return
 	fi
 
 	if [[ "${1:-}" == "-v" || "${1:-}" == "--version" ]]; then
-		echo "$0 v$VERSION"
+		printf '%s v%s\n' "${0##*/}" "$_logshuru_version"
 		return
 	fi
 
 	if [[ $# -lt 2 ]]; then
 		local error_color="" reset=""
-		if logshuru_color_enabled 2; then
-			error_color="${COLORS["RED_B"]}"
-			reset="${COLORS["END"]}"
+		if _logshuru_color_enabled 2; then
+			error_color="${_logshuru_colors["RED_B"]}"
+			reset="${_logshuru_colors["END"]}"
 		fi
 		printf '%bError: Missing required arguments%b\n' "$error_color" "$reset" >&2
-		echo "Usage: $(basename "$0") <log_level> <message>" >&2
-		echo "Try '$(basename "$0") --help' for more information." >&2
+		echo "Usage: ${0##*/} <log_level> <message>" >&2
+		echo "Try '${0##*/} --help' for more information." >&2
 		exit 1
 	fi
 
-	local log_level="$1"
-	local message="${*:2}"
-	log "$log_level" "$message"
+	log "$@"
 }
 
 # Child Bash processes must source the library to initialize functions and state.
-if ! is_sourced; then
-	main "$@"
+if ! _logshuru_is_sourced; then
+	_logshuru_main "$@"
 fi
