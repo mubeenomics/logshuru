@@ -27,6 +27,7 @@ With 8 configurable log levels, level filtering, and a lightweight Bash-based ru
 - [Configuration](#configuration)
   - [Default Log Level](#default-log-level)
   - [Colors](#colors)
+  - [Output Streams](#output-streams)
 - [Contributing](#contributing)
   - [Running Tests](#running-tests)
   - [Static Analysis](#static-analysis)
@@ -58,8 +59,9 @@ With 8 configurable log levels, level filtering, and a lightweight Bash-based ru
   GNU coreutils provides this command too.
 
 ANSI-compatible terminals display the colors. A terminal is not required to run
-the logger, but output currently includes ANSI escape sequences even when
-redirected to a file or pipe.
+the logger. The default color mode, `auto`, omits logger-generated ANSI sequences
+when output is redirected to a file or pipe. Set `LOGSHURU_COLOR=always` to
+retain colors in redirected output, or `never` to disable them everywhere.
 
 #### Platform compatibility
 
@@ -391,7 +393,82 @@ The default log level is `PROCESS`. You can change this by:
 
 ### Colors
 
-Colors are defined using ANSI escape codes and work on most modern terminals. If you need to disable colors, you can redirect output through `sed` or modify the `COLORS` array in the script.
+Set `LOGSHURU_COLOR` before starting the CLI or sourcing the library:
+
+| Mode | Behavior |
+| ---- | -------- |
+| `auto` (default) | Emit colors only when the destination is a terminal, `NO_COLOR` is unset or empty, and `TERM` is not `dumb` |
+| `always` | Emit colors even on redirected output, overriding `NO_COLOR` and `TERM=dumb` |
+| `never` | Omit all logger-generated colors, even on a terminal |
+
+```bash
+LOGSHURU_COLOR=never logshuru INFO "Plain text"
+LOGSHURU_COLOR=always logshuru INFO "Retain colors" > colored.log
+NO_COLOR=1 logshuru INFO "Plain text in automatic mode"
+
+# Configure library use before sourcing.
+export LOGSHURU_COLOR=never
+source logshuru
+log INFO "Plain library output"
+```
+
+Mode names are case-insensitive. Unset or empty `LOGSHURU_COLOR` selects `auto`;
+invalid nonempty values fail initialization with status `1` and a diagnostic on
+stderr. Like `LOG_LEVEL`, the mode is read when the library is sourced; later
+assignments alone do not change its active setting. In automatic mode, terminal
+status, `NO_COLOR`, and `TERM` are evaluated at each output call, including
+per-call redirections. Any nonempty `NO_COLOR` value, including `0`, disables
+automatic colors; an empty value does not.
+
+The same policy applies to help and colored invalid-call diagnostics, checking
+their respective stdout or stderr destination. Startup configuration diagnostics
+are plain text. Color controls affect logger-generated formatting, not escape
+sequences supplied inside message text.
+
+**Compatibility:** redirected output previously always contained ANSI colors.
+Use `LOGSHURU_COLOR=always` to retain that behavior. Log records continue to use
+stdout by default; usage and configuration diagnostics use stderr.
+
+New output settings use the `LOGSHURU_*` namespace. The existing `LOG_LEVEL`
+setting and `set_log_level` interface remain supported. Configuration is read at
+CLI startup/library initialization, with explicit settings taking precedence
+over automatic detection and defaults.
+
+### Output Streams
+
+Set `LOGSHURU_OUTPUT` before starting the CLI or sourcing the library:
+
+| Mode | Log destination |
+| ---- | --------------- |
+| `stdout` (default) | Every level goes to stdout, preserving existing behavior |
+| `stderr` | Every level goes to stderr, leaving stdout available for application data |
+| `split` | TRACE, DEBUG, PROCESS, INFO, and SUCCESS go to stdout; WARNING, ERROR, and CRITICAL go to stderr |
+
+```bash
+LOGSHURU_OUTPUT=stderr logshuru INFO "Processing sample"
+LOGSHURU_OUTPUT=split logshuru WARNING "Check sample quality"
+
+# Keep logs out of data captured by command substitution.
+export LOGSHURU_OUTPUT=stderr
+source logshuru
+sample_id=$(log INFO "Reading sample ID"; printf '%s' 'sample-42')
+```
+
+Mode names are case-insensitive. Unset or empty values select `stdout`; invalid
+nonempty values fail initialization with status `1` and a diagnostic on stderr.
+The active mode is initialized at startup/sourcing. Later assignments alone do
+not change it; exported settings are inherited when a child sources the library.
+
+Only log records are routed. Usage, invalid-call, and configuration diagnostics
+always use stderr. Help, version information, and `get_log_level` results always
+use stdout. The INFO notification from `set_log_level` is a log record and follows
+the selected routing and filtering rules.
+
+Automatic colors follow the selected stream's actual terminal status, including
+per-call redirection. Writing to stderr does not itself indicate failure: a
+successfully emitted ERROR or CRITICAL message still returns `0`. A failure to
+write to the selected stream returns nonzero. Filtered messages write to neither
+stream and continue to return `0`.
 
 ## Contributing
 
@@ -422,6 +499,8 @@ The baseline suite covers:
 | --------- | -------- |
 | `tests/log_levels.bats` | All eight levels at all eight thresholds in CLI and library modes (128 matrix cases), invalid levels at every threshold, and lowercase levels |
 | `tests/messages.bats` | Literal backslashes, percent signs, quotes, shell metacharacters, tabs, Unicode, multiline content, whitespace, and every level's ANSI color |
+| `tests/colors.bats` | Color modes, actual terminals and redirected output, `NO_COLOR` precedence, `TERM=dumb`, initialization errors, and independent stdout/stderr detection |
+| `tests/output.bats` | All levels in all three stream modes for CLI/library calls (48 routing cases), selected/unused descriptor failures, filtering, initialization, child processes, data separation, and selected-stream colors |
 | `tests/configuration.bats` | Environment defaults, normalization, invalid initialization, setter exports, and unchanged settings after rejected input |
 | `tests/arguments.bats` | Missing/empty arguments, multiple message arguments, setter argument counts, and help/version flags, including nounset mode |
 | `tests/child_shells.bats` | Explicit initialization, inherited thresholds, state isolation, and subshell usage |
@@ -434,7 +513,13 @@ configured threshold. Valid messages return `0` when emitted or filtered,
 including ERROR and CRITICAL messages; applications decide whether to exit after
 logging an error. Output failures return nonzero, including failures writing
 help, version information, or the current log level. Filtered messages do not
-write output and succeed even if stdout is closed.
+write output and succeed even if both stdout and stderr are closed.
+
+Terminal-color tests use the util-linux `script` command, included on the Linux
+CI runner. Install `util-linux` to run those tests locally; they are skipped if
+`script` is unavailable. This is a test dependency, not a logging dependency.
+Other tests explicitly select their expected color and output modes, so their
+expectations do not depend on the terminal or output configuration running Bats.
 
 ### Static Analysis
 
@@ -519,7 +604,8 @@ Development tools are pinned to:
 
 The workflow installs these tools in the runner's temporary directory and prints
 the Bash, coreutils, and tool versions in its logs. Tests run with `LC_ALL=C.UTF-8`
-and `TZ=UTC`. Repository access is read-only, and superseded runs on the same
+and `TZ=UTC`. The runner also reports the util-linux `script` version used for
+terminal tests. Repository access is read-only, and superseded runs on the same
 workflow/ref are cancelled.
 
 To reproduce its checks locally, install the versions above and use

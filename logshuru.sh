@@ -43,36 +43,91 @@ if [[ -z "${LOG_LEVELS[$current_log_level]:-}" ]]; then
 	fi
 fi
 
+# New output settings are read at initialization, like LOG_LEVEL.
+logshuru_color_mode=${LOGSHURU_COLOR:-auto}
+logshuru_color_mode=${logshuru_color_mode,,}
+case "$logshuru_color_mode" in
+auto | always | never) ;;
+*)
+	printf 'Invalid LOGSHURU_COLOR: %s\nValid modes: auto always never\n' "$LOGSHURU_COLOR" >&2
+	if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+		return 1
+	else
+		exit 1
+	fi
+	;;
+esac
+
+logshuru_output_mode=${LOGSHURU_OUTPUT:-stdout}
+logshuru_output_mode=${logshuru_output_mode,,}
+case "$logshuru_output_mode" in
+stdout | stderr | split) ;;
+*)
+	printf 'Invalid LOGSHURU_OUTPUT: %s\nValid modes: stdout stderr split\n' "$LOGSHURU_OUTPUT" >&2
+	if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+		return 1
+	else
+		exit 1
+	fi
+	;;
+esac
+
+# Detect the actual destination at emission time, including per-call redirection.
+logshuru_color_enabled() {
+	case "$logshuru_color_mode" in
+	always) return 0 ;;
+	never) return 1 ;;
+	auto) [[ -t "${1:-1}" && -z "${NO_COLOR:-}" && "${TERM:-}" != dumb ]] ;;
+	esac
+}
+
 # Display help
 show_help() {
-	echo -e "${COLORS["WHITE_B"]}$(basename "$0")${COLORS["END"]} - A Bash logger for color-coded logging with multiple log levels and context info."
+	local -A help_colors=()
+	local name
+	for name in "${!COLORS[@]}"; do help_colors[$name]=""; done
+	if logshuru_color_enabled 1; then
+		for name in "${!COLORS[@]}"; do help_colors[$name]="${COLORS[$name]}"; done
+	fi
+
+	echo -e "${help_colors["WHITE_B"]}$(basename "$0")${help_colors["END"]} - A Bash logger for color-coded logging with multiple log levels and context info."
 	echo
-	echo -e "${COLORS["WHITE_B"]}Usage:${COLORS["END"]}"
+	echo -e "${help_colors["WHITE_B"]}Usage:${help_colors["END"]}"
 	echo -e "  As CLI tool:\t$(basename "$0") <log_level> <message>"
 	echo -e "  As library:\tsource $(basename "$0")"
 	echo -e "             \tlog <log_level> <message>"
 	echo
-	echo -e "${COLORS["WHITE_B"]}Examples:${COLORS["END"]}"
+	echo -e "${help_colors["WHITE_B"]}Examples:${help_colors["END"]}"
 	echo -e "  $(basename "$0") INFO \"Application started\""
 	echo -e "  $(basename "$0") ERROR \"Failed to connect to database\""
 	echo -e "  source $(basename "$0") && log DEBUG \"Debug message\""
 	echo
-	echo -e "${COLORS["WHITE_B"]}Available log levels:${COLORS["END"]}"
-	echo -e "  ${COLORS["CYAN_B"]}TRACE${COLORS["END"]}     - Detailed tracing information"
-	echo -e "  ${COLORS["BLUE_B"]}DEBUG${COLORS["END"]}     - Debugging messages"
-	echo -e "  ${COLORS["PURPLE"]}PROCESS${COLORS["END"]}   - Process-level messages (Default)"
-	echo -e "  ${COLORS["WHITE_B"]}INFO${COLORS["END"]}      - General information"
-	echo -e "  ${COLORS["GREEN_B"]}SUCCESS${COLORS["END"]}   - Successful operation"
-	echo -e "  ${COLORS["YELLOW_B"]}WARNING${COLORS["END"]}   - Warning conditions"
-	echo -e "  ${COLORS["RED_B"]}ERROR${COLORS["END"]}     - Error messages"
-	echo -e "  ${COLORS["RBWT"]}CRITICAL${COLORS["END"]}  - Critical conditions"
+	echo -e "${help_colors["WHITE_B"]}Available log levels:${help_colors["END"]}"
+	echo -e "  ${help_colors["CYAN_B"]}TRACE${help_colors["END"]}     - Detailed tracing information"
+	echo -e "  ${help_colors["BLUE_B"]}DEBUG${help_colors["END"]}     - Debugging messages"
+	echo -e "  ${help_colors["PURPLE"]}PROCESS${help_colors["END"]}   - Process-level messages (Default)"
+	echo -e "  ${help_colors["WHITE_B"]}INFO${help_colors["END"]}      - General information"
+	echo -e "  ${help_colors["GREEN_B"]}SUCCESS${help_colors["END"]}   - Successful operation"
+	echo -e "  ${help_colors["YELLOW_B"]}WARNING${help_colors["END"]}   - Warning conditions"
+	echo -e "  ${help_colors["RED_B"]}ERROR${help_colors["END"]}     - Error messages"
+	echo -e "  ${help_colors["RBWT"]}CRITICAL${help_colors["END"]}  - Critical conditions"
 	echo
-	echo -e "${COLORS["WHITE_B"]}Log Level Filtering:${COLORS["END"]}"
+	echo -e "${help_colors["WHITE_B"]}Log Level Filtering:${help_colors["END"]}"
 	echo -e "  export LOG_LEVEL=DEBUG"
 	echo -e "  set_log_level DEBUG"
 	echo
-	echo -e "${COLORS["WHITE_B"]}Author:${COLORS["END"]} Mohammed Mubeen Shaikh"
-	echo -e "${COLORS["WHITE_B"]}Contact:${COLORS["END"]} mubeenomics@gmail.com"
+	echo -e "${help_colors["WHITE_B"]}Colors:${help_colors["END"]}"
+	echo "  LOGSHURU_COLOR=auto|always|never (default: auto)"
+	echo "  Auto colors terminal output only; always/never override detection."
+	echo "  In auto mode, nonempty NO_COLOR or TERM=dumb disables colors."
+	echo
+	echo -e "${help_colors["WHITE_B"]}Output:${help_colors["END"]}"
+	echo "  LOGSHURU_OUTPUT=stdout|stderr|split (default: stdout)"
+	echo "  Split sends WARNING and above to stderr; lower levels to stdout."
+	echo "  Usage errors use stderr; help, version, and get_log_level use stdout."
+	echo
+	echo -e "${help_colors["WHITE_B"]}Author:${help_colors["END"]} Mohammed Mubeen Shaikh"
+	echo -e "${help_colors["WHITE_B"]}Contact:${help_colors["END"]} mubeenomics@gmail.com"
 }
 
 # Check if log level should be printed
@@ -134,13 +189,26 @@ log() {
 		level_padded="CRITICAL"
 		;;
 	*)
-		echo -e "${COLORS["RED_B"]}Invalid log level:${COLORS["END"]} $level" >&2
-		echo -e "${COLORS["WHITE_B"]}Valid levels:${COLORS["END"]} ${!LOG_LEVELS[*]}" >&2
+		local error_color="" error_reset=""
+		if logshuru_color_enabled 2; then
+			error_color="${COLORS["RED_B"]}"
+			error_reset="${COLORS["END"]}"
+		fi
+		printf '%bInvalid log level:%b %s\nValid levels: %s\n' \
+			"$error_color" "$error_reset" "$level" "${!LOG_LEVELS[*]}" >&2
 		return 1
 		;;
 	esac
 
 	if ! should_log "$level"; then return 0; fi
+
+	local output_fd=1
+	case "$logshuru_output_mode" in
+	stderr) output_fd=2 ;;
+	split)
+		case "$level" in WARNING | ERROR | CRITICAL) output_fd=2 ;; esac
+		;;
+	esac
 
 	local date file_path
 	date=$(date +"%F %T.%3N")
@@ -156,14 +224,22 @@ log() {
 		line_no="${BASH_LINENO[0]:-0}"
 	fi
 
+	local timestamp_color="${COLORS["GREEN"]}" context_color="${COLORS["CYAN"]}" reset="${COLORS["END"]}"
+	if ! logshuru_color_enabled "$output_fd"; then
+		color=""
+		timestamp_color=""
+		context_color=""
+		reset=""
+	fi
+
 	# Interpret escapes only in color definitions; render message and context literally.
 	printf '%b%s%b | %b%s%b | %b%s%b:%b%s%b:%b%s%b - %b%s%b\n' \
-		"${COLORS["GREEN"]}" "$date" "${COLORS["END"]}" \
-		"$color" "$level_padded" "${COLORS["END"]}" \
-		"${COLORS["CYAN"]}" "$file_path" "${COLORS["END"]}" \
-		"${COLORS["CYAN"]}" "$func_name" "${COLORS["END"]}" \
-		"${COLORS["CYAN"]}" "$line_no" "${COLORS["END"]}" \
-		"$color" "$message" "${COLORS["END"]}"
+		"$timestamp_color" "$date" "$reset" \
+		"$color" "$level_padded" "$reset" \
+		"$context_color" "$file_path" "$reset" \
+		"$context_color" "$func_name" "$reset" \
+		"$context_color" "$line_no" "$reset" \
+		"$color" "$message" "$reset" >&"$output_fd"
 }
 
 # Set log level
@@ -210,7 +286,12 @@ main() {
 	fi
 
 	if [[ $# -lt 2 ]]; then
-		echo -e "${COLORS["RED_B"]}Error: Missing required arguments${COLORS["END"]}" >&2
+		local error_color="" reset=""
+		if logshuru_color_enabled 2; then
+			error_color="${COLORS["RED_B"]}"
+			reset="${COLORS["END"]}"
+		fi
+		printf '%bError: Missing required arguments%b\n' "$error_color" "$reset" >&2
 		echo "Usage: $(basename "$0") <log_level> <message>" >&2
 		echo "Try '$(basename "$0") --help' for more information." >&2
 		exit 1
