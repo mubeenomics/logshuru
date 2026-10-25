@@ -126,16 +126,16 @@ Add `$HOME/.local/bin` to `PATH` if needed. For library use, source
 
 #### Pinned download
 
-For a reproducible download, select a full commit SHA and the expected SHA-256
-of its `logshuru.sh` from a trusted checkout or published release notes. Set
-`LOGSHURU_REVISION` and `LOGSHURU_SHA256` to those values before running this
-block. It requires both values and stops on a failed download or checksum:
+The following block installs **v2.0.0**, pinned to its full release commit and
+published SHA-256. It stops on a failed download or checksum. To select another
+reviewed revision, set both `LOGSHURU_REVISION` and `LOGSHURU_SHA256` beforehand
+using values from its trusted checkout or release notes:
 
 ```bash
 (
     set -euo pipefail
-    : "${LOGSHURU_REVISION:?Set this to the full 40-character commit SHA}"
-    : "${LOGSHURU_SHA256:?Set this to the expected script SHA-256}"
+    LOGSHURU_REVISION=${LOGSHURU_REVISION:-494e69ce4f3199ec04e6e6c29e283d06fd09713d}
+    LOGSHURU_SHA256=${LOGSHURU_SHA256:-520cd796f8c2ad4a2a4a8298566731ba17c5e10a7e3392fdfa854f6bd5c2db6e}
     [[ "$LOGSHURU_REVISION" =~ ^[0-9a-f]{40}$ ]]
     [[ "$LOGSHURU_SHA256" =~ ^[0-9a-f]{64}$ ]]
     download_dir=$(mktemp -d)
@@ -150,8 +150,9 @@ block. It requires both values and stops on a failed download or checksum:
 )
 ```
 
-Release assets are available from the
-[versioned GitHub releases](https://github.com/mubeenomics/logshuru/releases).
+The [v2.0.0 release](https://github.com/mubeenomics/logshuru/releases/tag/v2.0.0)
+also provides the script and `SHA256SUMS` as download assets. The published
+assets and commit-pinned installation have been verified against the same hash.
 Maintainer instructions are in [RELEASING.md](RELEASING.md).
 
 ## Usage
