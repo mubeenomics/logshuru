@@ -138,6 +138,8 @@ freeze_time() {
 @test "date failures return nonzero and do not emit incomplete log records" {
 	# Exported stub is invoked indirectly by the child Bash processes.
 	# shellcheck disable=SC2317
+	# Invoked indirectly by the sourced logger.
+	# shellcheck disable=SC2329
 	date() { return 23; }
 	export -f date
 	for mode in cli library; do
@@ -151,6 +153,8 @@ freeze_time() {
 @test "handled setter calls propagate timestamp-generation failures" {
 	# Exported stub is invoked indirectly by the child Bash process.
 	# shellcheck disable=SC2317
+	# Invoked indirectly by the sourced logger.
+	# shellcheck disable=SC2329
 	date() { return 23; }
 	export -f date
 	run --separate-stderr bash -euo pipefail -c '
@@ -166,6 +170,8 @@ freeze_time() {
 @test "filtered messages do not invoke date or fail when it is unavailable" {
 	# Exported stub would be invoked indirectly if filtering were broken.
 	# shellcheck disable=SC2317
+	# Invoked indirectly by the sourced logger.
+	# shellcheck disable=SC2329
 	date() { return 23; }
 	export -f date
 	export LOG_LEVEL=ERROR
