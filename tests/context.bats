@@ -86,3 +86,31 @@ assert_location() {
 	[[ "$plain_output" =~ $pattern ]]
 	[ "${BASH_REMATCH[1]}" -eq "${BASH_REMATCH[2]}" ]
 }
+
+@test "setter notifications report application call sites in text JSON and file copies" {
+	local format mode expected_function expected_line record
+	for format in text json; do
+		export LOGSHURU_FORMAT="$format" LOGSHURU_COLOR=never
+		for mode in setter-top-level setter-nested; do
+			export LOGSHURU_FILE="$BATS_TEST_TMPDIR/$format-$mode.log"
+			expected_function=main
+			if [[ "$mode" == setter-nested ]]; then expected_function=setter_context; fi
+			run --separate-stderr bash "$FIXTURE" "$LOGSHURU" "$mode"
+			[ "$status" -eq 0 ]
+			[ -z "$stderr" ]
+			[ "${#lines[@]}" -eq 2 ]
+			record=${lines[0]}
+			expected_line=${lines[1]#expected=}
+			[ "$expected_line" -gt 0 ]
+			[ "$record" = "$(<"$LOGSHURU_FILE")" ]
+			if [[ "$format" == json ]]; then
+				printf '%s\n' "$record" | jq -e --arg function "$expected_function" --argjson line "$expected_line" '
+					.file == "context.bash" and .function == $function and .line == $line and
+					.level == "INFO" and .message == "Current log level: DEBUG"
+				' >/dev/null
+			else
+				[[ "$record" == *" | INFO     | context.bash:$expected_function:$expected_line - Current log level: DEBUG" ]]
+			fi
+		done
+	done
+}

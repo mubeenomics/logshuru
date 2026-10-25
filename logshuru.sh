@@ -11,7 +11,7 @@ if ((BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 2))); 
 fi
 
 # Internal state and helpers use a reserved project namespace.
-_logshuru_version="2.0.0-dev"
+_logshuru_version="2.0.0"
 _logshuru_default_log_level="PROCESS"
 _logshuru_valid_levels='TRACE DEBUG PROCESS INFO SUCCESS WARNING ERROR CRITICAL'
 
@@ -259,8 +259,15 @@ _logshuru_should_log() {
 	[[ $message_level_num -ge $current_level_num ]]
 }
 
-# Logging function
+# Public entry points skip their wrapper frame when capturing application context.
 log() {
+	_logshuru_emit 2 "$@"
+}
+
+# The frame offset is explicit and local to this emission, including setter calls.
+_logshuru_emit() {
+	local caller_frame=$1
+	shift
 	if [[ $# -lt 2 ]]; then
 		printf 'Error: Missing required arguments\nUsage: log <log_level> <message>\n' >&2
 		return 1
@@ -340,10 +347,10 @@ log() {
 		func_name=cli
 		line_no=0
 	else
-		file_path="${BASH_SOURCE[1]:-unknown}"
+		file_path="${BASH_SOURCE[$caller_frame]:-unknown}"
 		file_path="${file_path##*/}"
-		func_name="${FUNCNAME[1]:-main}"
-		line_no="${BASH_LINENO[0]:-0}"
+		func_name="${FUNCNAME[$caller_frame]:-main}"
+		line_no="${BASH_LINENO[$((caller_frame - 1))]:-0}"
 	fi
 
 	local stream_record file_record
@@ -411,7 +418,7 @@ set_log_level() {
 		export LOG_LEVEL="$new_level"
 		_logshuru_current_log_level="$new_level"
 		# Propagate notification failures even when the caller handles our status.
-		log INFO "Current log level: $_logshuru_current_log_level"
+		_logshuru_emit 2 INFO "Current log level: $_logshuru_current_log_level"
 	else
 		printf "Warning: '%s' is not a valid log level.\nValid levels: %s\n" \
 			"$new_level" "$_logshuru_valid_levels" >&2
