@@ -5,6 +5,9 @@ It provides structured and color-coded log messages with contextual details like
 You can use it as a standalone CLI tool or source it as a library in your scripts, making it ideal for both small shell scripts and production pipelines.
 With 8 configurable log levels, level filtering, and a lightweight Bash-based runtime, logshuru helps bring clarity and consistency to your Bash logging.
 
+The current development version is **2.0.0-dev**. See the
+[changelog](CHANGELOG.md) for changes and migration notes.
+
 ## Table of Contents
 
 - [Features](#features)
@@ -37,6 +40,7 @@ With 8 configurable log levels, level filtering, and a lightweight Bash-based ru
   - [Formatting](#formatting)
   - [Running All Checks](#running-all-checks)
   - [Continuous Integration](#continuous-integration)
+- [Versioning and Releases](#versioning-and-releases)
 - [Acknowledgments](#acknowledgments)
 
 ## Features
@@ -48,20 +52,20 @@ With 8 configurable log levels, level filtering, and a lightweight Bash-based ru
 - **Dual Mode** - Use as a CLI tool or source as a library in your scripts
 - **Optional File Logging** - Append uncolored copies alongside stdout/stderr records
 - **Optional JSON Lines** - Machine-readable records with Bash-only UTF-8 serialization
-- **Lightweight Runtime** - Bash plus `date` and `basename`; no language package installation required
+- **Lightweight Runtime** - Bash plus GNU-compatible `date`; no language package installation required
 
 ## Installation
 
 ### Requirements
 
-- **Bash 4.0 or later:** the implementation uses associative arrays and case
-  conversion introduced in Bash 4. Run it with Bash or source it from Bash;
+- **Bash 4.2 or later:** the implementation uses global associative arrays
+  (`declare -gA`) so initialization also works inside loader functions.
+  Older Bash versions fail initialization with a diagnostic. Run it with Bash
+  or source it from Bash;
   POSIX `sh`, Dash, and Zsh are not supported interpreters.
 - **GNU-compatible `date` on `PATH`:** timestamp generation uses
   `date +"%F %T.%3N"`. The command must support `%F`, `%T`, and `%3N` for
   millisecond formatting. GNU coreutils provides a suitable `date`.
-- **`basename` on `PATH`:** used for source filenames and CLI help/usage text.
-  GNU coreutils provides this command too.
 - **Timezone database for named overrides:** `LOGSHURU_TZ=Asia/Kolkata`, for
   example, requires that zone to be installed under `/usr/share/zoneinfo` (or
   the directory selected by `TZDIR`). Linux distributions typically provide it
@@ -74,10 +78,10 @@ retain colors in redirected output, or `never` to disable them everywhere.
 
 #### Platform compatibility
 
-The initial CI target is **Ubuntu 22.04 on x86_64**, using its system Bash 5.1
-and GNU coreutils. Local verification used Linux with Bash 5.1.16 and GNU
-coreutils 8.32. Bash 4.0 is the implementation's minimum language requirement;
-older Bash versions and other platforms are not covered by the current CI job.
+CI targets **Ubuntu 22.04 on x86_64** with GNU coreutils. It runs the full suite
+under the system Bash 5.1 and source-built Bash **4.2, 4.4, and 5.2**, including
+the minimum supported interpreter. Local verification also covers those three
+source-built versions and Bash 5.1.16. Other platforms are not covered by CI.
 
 The default Bash 3.2 and BSD `date` shipped with macOS do not meet these
 requirements. To use logshuru there, provide a newer Bash and a GNU-compatible
@@ -90,7 +94,7 @@ To inspect your environment:
 
 ```bash
 bash --version
-command -v date basename
+command -v date
 date +"%F %T.%3N"
 ```
 
@@ -100,23 +104,53 @@ when set; [timestamp settings](#timestamps) can override the format and zone.
 
 #### Installation and development tools
 
-The quick-install instructions below additionally use `curl`, `chmod`, `sudo`,
-and `mv`. These are installation tools, not logging dependencies. The regression
-suite requires Bats-core 1.5.0 or later and jq 1.6 or later for JSON validation;
-see [Running Tests](#running-tests).
+The pinned-download instructions below additionally use `curl`, `sha256sum`,
+`mktemp`, `mkdir`, `rm`, and `install`. These are installation tools, not logging
+dependencies. The regression suite requires Bats-core 1.5.0 or later and jq 1.6
+or later for JSON validation; see [Running Tests](#running-tests).
 
 ### Quick Install
 
+From a reviewed checkout, install the script in your user-local bin directory:
+
 ```bash
-# Download the script
-curl -O https://raw.githubusercontent.com/mubeenomics/logshuru/main/logshuru.sh
-
-# Make it executable
-chmod +x logshuru.sh
-
-# Move to your PATH for system-wide access
-sudo mv logshuru.sh /usr/local/bin/logshuru
+mkdir -p "$HOME/.local/bin"
+install -m 755 logshuru.sh "$HOME/.local/bin/logshuru"
 ```
+
+Add `$HOME/.local/bin` to `PATH` if needed. For library use, source
+`"$HOME/.local/bin/logshuru"`.
+
+#### Pinned download
+
+For a reproducible download, select a full commit SHA and the expected SHA-256
+of its `logshuru.sh` from a trusted checkout or published release notes. Set
+`LOGSHURU_REVISION` and `LOGSHURU_SHA256` to those values before running this
+block. It requires both values and stops on a failed download or checksum:
+
+```bash
+(
+    set -euo pipefail
+    : "${LOGSHURU_REVISION:?Set this to the full 40-character commit SHA}"
+    : "${LOGSHURU_SHA256:?Set this to the expected script SHA-256}"
+    [[ "$LOGSHURU_REVISION" =~ ^[0-9a-f]{40}$ ]]
+    [[ "$LOGSHURU_SHA256" =~ ^[0-9a-f]{64}$ ]]
+    download_dir=$(mktemp -d)
+    trap 'rm -rf -- "$download_dir"' EXIT
+    curl --fail --silent --show-error --location \
+        "https://raw.githubusercontent.com/mubeenomics/logshuru/${LOGSHURU_REVISION}/logshuru.sh" \
+        --output "$download_dir/logshuru.sh"
+    printf '%s  %s\n' "$LOGSHURU_SHA256" "$download_dir/logshuru.sh" | sha256sum --check --strict
+    bash -n "$download_dir/logshuru.sh"
+    mkdir -p "$HOME/.local/bin"
+    install -m 755 "$download_dir/logshuru.sh" "$HOME/.local/bin/logshuru"
+)
+```
+
+`2.0.0-dev` is an unreleased development version. Its release tag and published
+checksum will be established when the release is finalized; the download example
+does not assume that a `v2.0.0` tag already exists. Maintainer instructions are in
+[RELEASING.md](RELEASING.md).
 
 ## Usage
 
@@ -150,6 +184,18 @@ log INFO "Starting processing..."
 log DEBUG "Processing item: $item"
 log SUCCESS "Processing completed"
 log ERROR "Something went wrong!"
+```
+
+The public library functions are `log`, `set_log_level`, and `get_log_level`.
+Internal helpers and state use the reserved `_logshuru_*` namespace; applications
+should not define or depend on those names. Generic caller names such as
+`VERSION`, `COLORS`, and `main` are preserved. Sourcing inside a loader function
+is supported; the initialized logger remains usable after that function returns:
+
+```bash
+load_logger() { source "$HOME/.local/bin/logshuru"; }
+load_logger
+log INFO "Logger ready"
 ```
 
 Each new Bash process, such as one started with `bash -c` or by running another
@@ -199,6 +245,7 @@ Both CLI logging and `log` require a level and at least one message argument.
 A missing message is an error, even when the level would be filtered. An
 explicitly empty message (`log INFO ""`) is valid. Additional message arguments
 are joined with spaces, so `log INFO first second` logs `first second`.
+This joining is independent of the caller's `IFS` and does not change it.
 Missing arguments return `1` with usage information on stderr, including when
 Bash nounset mode (`set -u`) is enabled.
 
@@ -219,6 +266,12 @@ a newline deliberately, use Bash's ANSI-C quoting:
 log INFO 'Literal backslash-n: \n'
 log INFO $'First line\nSecond line'
 ```
+
+**Untrusted messages:** text mode preserves actual newlines and terminal escape
+characters. Such input can imitate additional log records or terminal formatting.
+Use `LOGSHURU_FORMAT=json` for untrusted input: newlines and control characters
+are escaped and each event occupies one physical line. This also applies to
+untrusted custom timestamp text and source filenames.
 
 Source context depends on how logshuru is called:
 
@@ -276,6 +329,12 @@ is preserved, including user-supplied escape characters represented as JSON
 escapes. Malformed UTF-8 in any string field returns `1` with a diagnostic and
 emits neither stream nor file record. Bash strings and command arguments cannot
 represent embedded NUL bytes.
+
+The serializer validates and escapes strings byte by byte in Bash. Long messages
+therefore cost more CPU time than text output; logshuru is intended for normal
+log lines rather than high-volume payload serialization. Timestamp generation
+still invokes GNU `date` once per emitted event in either format. Source filename
+extraction uses Bash parameter expansion and launches no `basename` process.
 
 Routing, level filtering, source context, strict-mode behavior, and independent
 destination failures are unchanged. If `LOGSHURU_FILE` is enabled, it appends
@@ -687,6 +746,7 @@ The baseline suite covers:
 | `tests/arguments.bats` | Missing/empty arguments, multiple message arguments, setter argument counts, and help/version flags, including nounset mode |
 | `tests/child_shells.bats` | Explicit initialization, inherited thresholds, state isolation, and subshell usage |
 | `tests/context.bats` | Real caller basenames, immediate functions, actual call lines, sourced helpers, subshells, and CLI placeholders |
+| `tests/library.bats` | Function-local sourcing under strict mode, caller namespace preservation, IFS-independent joins, ordered diagnostics, basename-free operation, and version output |
 | `tests/strict_mode.bats` | Full strict-mode workflows, shell-option preservation, handled/unhandled failures, pipelines, and failed writes |
 | `tests/exit_status.bats` | Output failures without errexit, filtered messages with closed stdout, getter failures, and help/version write failures |
 
@@ -705,8 +765,8 @@ expectations do not depend on the terminal or output configuration running Bats.
 
 ### Static Analysis
 
-Use [ShellCheck](https://www.shellcheck.net/) 0.10.0 or later to check the logger,
-Bats tests, test helpers, and fixtures. Version 0.10.0 was used to verify the
+Use [ShellCheck](https://www.shellcheck.net/) 0.11.0 or later to check the logger,
+Bats tests, test helpers, and fixtures. Version 0.11.0 was used to verify the
 current code. ShellCheck is a development tool, not a logging dependency.
 
 Install it with your package manager (for example, `sudo apt install shellcheck`
@@ -775,14 +835,22 @@ bats tests
 requests, and manual dispatches. Its Ubuntu 22.04 job uses the same syntax,
 ShellCheck, Bash/Bats formatting, and Bats commands documented above, with
 separate steps for clear failure reporting.
+Additional runtime jobs build Bash 4.2, 4.4, and 5.2 from pinned GNU source
+archives and run syntax checks and the full Bats suite. The selected interpreter
+is placed first on `PATH` for Bats and its child shells, and its version is
+asserted before the suite runs.
 
 Development tools are pinned to:
 
 | Tool | Version |
 | ---- | ------- |
 | Bats-core | 1.11.1 |
-| ShellCheck | 0.10.0 |
+| ShellCheck | 0.11.0 |
 | shfmt | 3.10.0 |
+
+All downloaded tools and Bash archives are verified against SHA-256 values
+pinned in the workflow before extraction or execution. When updating a tool,
+update its version and checksum together after reviewing the upstream artifact.
 
 The workflow installs these tools in the runner's temporary directory and prints
 the Bash, coreutils, and tool versions in its logs. Tests run with `LC_ALL=C.UTF-8`
@@ -793,6 +861,25 @@ the same workflow/ref are cancelled.
 To reproduce its checks locally, install the versions above and use
 [Running All Checks](#running-all-checks). GitHub starts the workflow once the
 workflow file and project changes are pushed to the repository.
+
+## Versioning and Releases
+
+logshuru follows semantic versioning for the CLI, the three public library
+functions, documented environment settings, exit statuses, and output contracts.
+Breaking changes to those contracts or the minimum Bash version require a major
+release; backward-compatible features use a minor release and bug fixes use a
+patch release. `_logshuru_*` internals are not public API.
+
+The next planned major release is **2.0.0**. Migration includes Bash 4.2 as the
+minimum, private helper names, automatic colors on terminals only, and stderr
+diagnostics. `LOGSHURU_COLOR=always` restores colors in redirected output.
+See [CHANGELOG.md](CHANGELOG.md) for the complete unreleased changes.
+
+Releases use `vMAJOR.MINOR.PATCH` tags, release notes identifying the full commit
+SHA, and `logshuru.sh` plus `SHA256SUMS` download assets. Development snapshots
+report a prerelease version such as `2.0.0-dev`. The
+[release procedure](RELEASING.md) includes generating checksums and verifying a
+pinned download before announcing a release.
 
 ## Acknowledgments
 

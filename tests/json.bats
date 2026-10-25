@@ -215,7 +215,7 @@ assert_json_message() {
 	[ -z "$stderr" ]
 	run --separate-stderr bash "$LOGSHURU" --version
 	[ "$status" -eq 0 ]
-	[[ "$output" == *v1.0.0 ]]
+	[[ "$output" == 'logshuru.sh v2.0.0-dev' ]]
 	[ -z "$stderr" ]
 	run --separate-stderr bash -euo pipefail -c 'source "$1"; get_log_level' bash "$LOGSHURU"
 	[ "$status" -eq 0 ]

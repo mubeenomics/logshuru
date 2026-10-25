@@ -78,5 +78,11 @@ assert_location() {
 
 @test "sourced command strings mark unavailable source filenames as unknown" {
 	run --separate-stderr bash -euo pipefail -c 'source "$1"; log INFO "command line=$LINENO"' bash "$LOGSHURU"
-	assert_location unknown main command
+	[ "$status" -eq 0 ]
+	[ -z "$stderr" ]
+	strip_context_colors
+	# Bash 4.x reports line 0 in command strings; real-file tests require > 0.
+	local pattern=' \| unknown:main:([0-9]+) - command line=([0-9]+)$'
+	[[ "$plain_output" =~ $pattern ]]
+	[ "${BASH_REMATCH[1]}" -eq "${BASH_REMATCH[2]}" ]
 }
