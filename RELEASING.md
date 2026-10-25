@@ -22,7 +22,8 @@ changes. Future development snapshots should use the next planned `-dev` version
 2. Set `_logshuru_version` in `logshuru.sh` to the release version without `v` or
    `-dev`, update version assertions in `tests/library.bats` and `tests/json.bats`,
    and update the README's development/release status.
-3. Run all checks documented in the README, including the full Bats suite on
+3. Run all checks in [CONTRIBUTING.md](CONTRIBUTING.md#running-all-checks), including
+   the full Bats suite on
    Bash 4.2, 4.4, system Bash 5.1, and Bash 5.2. Confirm the hosted workflow passes
    for the final release commit.
 4. Review `git status`, the full diff, and recent history; commit the finalized
@@ -53,7 +54,7 @@ release create` or `gh release upload`). Release notes should contain:
 - The script's SHA-256 copied from `SHA256SUMS`.
 - Links to the changelog and the version-pinned script/checksum assets.
 - Installation commands with concrete `LOGSHURU_REVISION` and `LOGSHURU_SHA256`
-  values for the README's pinned-download procedure.
+  values for the [commit-pinned download](docs/INSTALLATION.md#version-pinned-download).
 
 Generate checksums after finalizing the version. Do not reuse a checksum from a
 development snapshot or checksum a different working-tree copy.
@@ -64,13 +65,14 @@ development snapshot or checksum a different working-tree copy.
    assets into a clean temporary directory. Verify with
    `sha256sum --check --strict SHA256SUMS`.
 2. Download the raw script at the recorded full commit SHA and confirm it has the
-   same checksum as the release asset. Use the README's pinned installer with a
-   temporary `HOME` to avoid replacing a local installation.
+   same checksum as the release asset. Use the installation guide's pinned
+   download with a temporary `HOME` to avoid replacing a local installation.
 3. Confirm `bash "$HOME/.local/bin/logshuru" --version` reports the final version;
    run a CLI text/JSON event and source the installed file through a loader
    function under strict mode, then check filtering and the setter/getter.
-4. Publish the concrete pinned revision/checksum in the README once the release
-   is available. Only then announce the release as installable and verified.
+4. Update the README's versioned download URL/checksum and the installation
+   guide's commit-pinned defaults once the release is available. Only then
+   announce the release as installable and verified.
 
 For subsequent development, create a new unreleased changelog section and advance
 the script and version assertions to the next planned `-dev` version.

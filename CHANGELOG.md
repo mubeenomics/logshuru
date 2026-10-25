@@ -3,6 +3,22 @@
 Changes are recorded here before a release is published. Versions follow
 [Semantic Versioning](https://semver.org/); see [RELEASING.md](RELEASING.md).
 
+## Unreleased
+
+### Documentation and examples
+
+- Keep the project general-purpose; domain-specific workflow logic belongs in
+  the applications using logshuru.
+- Publish durable usage/configuration contracts and design rationale under `docs/`.
+- Shorten the README to a quick start; move installation, usage, and configuration
+  reference into `docs/` and development checks into `CONTRIBUTING.md`.
+  Consolidate design rationale and update example/release-guide navigation.
+- Add a small command-runner example with stderr-default lifecycle logging,
+  literal argument forwarding, command-status preservation, and elapsed seconds.
+- Cover the example with integration tests and include example shell files in
+  local/CI syntax, lint, formatting, and Bash runtime checks.
+- These additions leave the released logger interface and version at `2.0.0`.
+
 ## 2.0.0 — 2026-10-25
 
 This release includes the reliability and output-control work previously
