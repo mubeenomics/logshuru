@@ -12,6 +12,16 @@ outer_context() {
 	emit_context
 }
 
+setter_context() {
+	local expected_line=$((LINENO + 1))
+	set_log_level DEBUG
+	printf 'expected=%s\n' "$expected_line"
+}
+
+outer_setter_context() {
+	setter_context
+}
+
 case "$2" in
 top-level) log INFO "top-level line=$LINENO" ;;
 function) emit_context ;;
@@ -23,4 +33,10 @@ helper)
 	helper_context
 	;;
 cli) bash "$1" INFO "CLI from script" ;;
+setter-top-level)
+	expected_line=$((LINENO + 1))
+	set_log_level DEBUG
+	printf 'expected=%s\n' "$expected_line"
+	;;
+setter-nested) outer_setter_context ;;
 esac

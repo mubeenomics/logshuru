@@ -5,7 +5,7 @@ It provides structured and color-coded log messages with contextual details like
 You can use it as a standalone CLI tool or source it as a library in your scripts, making it ideal for both small shell scripts and production pipelines.
 With 8 configurable log levels, level filtering, and a lightweight Bash-based runtime, logshuru helps bring clarity and consistency to your Bash logging.
 
-The current development version is **2.0.0-dev**. See the
+The current version is **2.0.0**. See the
 [changelog](CHANGELOG.md) for changes and migration notes.
 
 ## Table of Contents
@@ -82,6 +82,9 @@ CI targets **Ubuntu 22.04 on x86_64** with GNU coreutils. It runs the full suite
 under the system Bash 5.1 and source-built Bash **4.2, 4.4, and 5.2**, including
 the minimum supported interpreter. Local verification also covers those three
 source-built versions and Bash 5.1.16. Other platforms are not covered by CI.
+The source-built CI interpreters deliberately use the original, unpatched
+**4.2.0, 4.4.0, and 5.2.0** tarballs to exercise the language-feature baselines;
+distribution builds generally include later patches.
 
 The default Bash 3.2 and BSD `date` shipped with macOS do not meet these
 requirements. To use logshuru there, provide a newer Bash and a GNU-compatible
@@ -147,10 +150,9 @@ block. It requires both values and stops on a failed download or checksum:
 )
 ```
 
-`2.0.0-dev` is an unreleased development version. Its release tag and published
-checksum will be established when the release is finalized; the download example
-does not assume that a `v2.0.0` tag already exists. Maintainer instructions are in
-[RELEASING.md](RELEASING.md).
+Release assets are available from the
+[versioned GitHub releases](https://github.com/mubeenomics/logshuru/releases).
+Maintainer instructions are in [RELEASING.md](RELEASING.md).
 
 ## Usage
 
@@ -279,6 +281,7 @@ Source context depends on how logshuru is called:
 | ---------- | -------------- |
 | Sourced library in a script | Caller file basename, immediate caller function, and the one-based line containing the `log` call |
 | Top-level call in a script | Caller file basename, `main`, and the call line |
+| `set_log_level` INFO notification | Application file, immediate application function, and line calling `set_log_level` |
 | Standalone CLI | `cli:cli:0`, indicating that the invoking shell's source location is unavailable |
 | Sourced library in a command string such as `bash -c` | `unknown` when no source filename is available; function and line use the context Bash provides |
 
@@ -408,6 +411,8 @@ without changing either setting.
 After a valid level change, the setter logs an INFO notification. If writing that
 notification fails, the setter returns nonzero, but the new level remains active
 and exported. A notification suppressed by filtering still returns `0`.
+The notification's source context identifies the application's `set_log_level`
+call, rather than the internal logging helper.
 
 ```bash
 #!/bin/bash
@@ -745,7 +750,7 @@ The baseline suite covers:
 | `tests/configuration.bats` | Environment defaults, normalization, invalid initialization, setter exports, and unchanged settings after rejected input |
 | `tests/arguments.bats` | Missing/empty arguments, multiple message arguments, setter argument counts, and help/version flags, including nounset mode |
 | `tests/child_shells.bats` | Explicit initialization, inherited thresholds, state isolation, and subshell usage |
-| `tests/context.bats` | Real caller basenames, immediate functions, actual call lines, sourced helpers, subshells, and CLI placeholders |
+| `tests/context.bats` | Real caller basenames, immediate functions, actual call lines, sourced helpers, subshells, CLI placeholders, and setter notification context in text/JSON/file output |
 | `tests/library.bats` | Function-local sourcing under strict mode, caller namespace preservation, IFS-independent joins, ordered diagnostics, basename-free operation, and version output |
 | `tests/strict_mode.bats` | Full strict-mode workflows, shell-option preservation, handled/unhandled failures, pipelines, and failed writes |
 | `tests/exit_status.bats` | Output failures without errexit, filtered messages with closed stdout, getter failures, and help/version write failures |
@@ -870,10 +875,10 @@ Breaking changes to those contracts or the minimum Bash version require a major
 release; backward-compatible features use a minor release and bug fixes use a
 patch release. `_logshuru_*` internals are not public API.
 
-The next planned major release is **2.0.0**. Migration includes Bash 4.2 as the
+The current major release is **2.0.0**. Migration includes Bash 4.2 as the
 minimum, private helper names, automatic colors on terminals only, and stderr
 diagnostics. `LOGSHURU_COLOR=always` restores colors in redirected output.
-See [CHANGELOG.md](CHANGELOG.md) for the complete unreleased changes.
+See [CHANGELOG.md](CHANGELOG.md) for the complete release changes.
 
 Releases use `vMAJOR.MINOR.PATCH` tags, release notes identifying the full commit
 SHA, and `logshuru.sh` plus `SHA256SUMS` download assets. Development snapshots

@@ -11,9 +11,9 @@ Use semantic versions and tags of the form `vMAJOR.MINOR.PATCH`.
 - The public library functions are `log`, `set_log_level`, and `get_log_level`.
   `_logshuru_*` names are private implementation details.
 
-The next planned version is `2.0.0`; until finalized, the script reports
-`2.0.0-dev`. The changelog's unreleased section collects all changes since the
-historical `1.0.0` baseline, including previously committed compatibility changes.
+The current version is `2.0.0`. Its changelog section collects all changes since
+the historical `1.0.0` baseline, including previously committed compatibility
+changes. Future development snapshots should use the next planned `-dev` version.
 
 ## Prepare
 
