@@ -3,11 +3,11 @@
 Changes are recorded here before a release is published. Versions follow
 [Semantic Versioning](https://semver.org/); see [RELEASING.md](RELEASING.md).
 
-## Unreleased — planned 2.0.0
+## 2.0.0 — 2026-10-25
 
-Development snapshots report `2.0.0-dev`. This section includes the reliability
-and output-control work previously committed while the script still reported
-`1.0.0`; it does not imply those changes were published as a tagged release.
+This release includes the reliability and output-control work previously
+committed while the script still reported `1.0.0`. Those changes were not
+previously published as separately versioned releases.
 
 ### Breaking changes and migration
 
@@ -54,6 +54,8 @@ and output-control work previously committed while the script still reported
 - Preserve strict-mode workflows and report accurate caller context. CLI records
   explicitly use `cli:cli:0`; unavailable source lines use `0`.
 - Use the executable basename for `--version`, consistent with CLI help.
+- Attribute setter INFO notifications to the application's `set_log_level` call
+  in text, JSON, and file copies, preserving routing/filtering/failure behavior.
 
 ### Performance and documentation
 
@@ -62,6 +64,7 @@ and output-control work previously committed while the script still reported
 - Document text-mode record-forging risks for untrusted input and JSON mode's
   single-line framing, along with pure-Bash serialization overhead.
 - Upgrade verified ShellCheck to 0.11.0 and annotate indirectly invoked test stubs.
+- Document that source-built CI interpreters use original unpatched tarballs.
 
 ## Historical baseline — 1.0.0
 
