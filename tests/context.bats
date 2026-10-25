@@ -9,6 +9,8 @@ setup() {
 	LOGSHURU="$BATS_TEST_DIRNAME/../logshuru.sh"
 	FIXTURE="$BATS_TEST_DIRNAME/fixtures/context.bash"
 	export LOG_LEVEL=PROCESS
+	export LOGSHURU_COLOR=always
+	export LOGSHURU_OUTPUT=stdout
 }
 
 strip_context_colors() {

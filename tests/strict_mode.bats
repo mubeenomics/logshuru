@@ -8,6 +8,8 @@ bats_require_minimum_version 1.5.0
 setup() {
 	LOGSHURU="$BATS_TEST_DIRNAME/../logshuru.sh"
 	export LOG_LEVEL=PROCESS
+	export LOGSHURU_COLOR=always
+	export LOGSHURU_OUTPUT=stdout
 }
 
 @test "strict-mode library initialization supports unset and empty configuration" {

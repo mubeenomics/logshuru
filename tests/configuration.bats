@@ -11,6 +11,8 @@ source "$BATS_TEST_DIRNAME/test_helper.bash"
 setup() {
 	LOGSHURU="$BATS_TEST_DIRNAME/../logshuru.sh"
 	export LOG_LEVEL=PROCESS
+	export LOGSHURU_COLOR=always
+	export LOGSHURU_OUTPUT=stdout
 	LEVELS=(TRACE DEBUG PROCESS INFO SUCCESS WARNING ERROR CRITICAL)
 }
 
