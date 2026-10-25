@@ -12,6 +12,7 @@ setup() {
 	export LOGSHURU_OUTPUT=stdout
 	unset LOGSHURU_TIMESTAMP_FORMAT LOGSHURU_TZ
 	unset LOGSHURU_FILE
+	export LOGSHURU_FORMAT=text
 }
 
 # The entry is either the CLI or a public library function.
