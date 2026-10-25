@@ -86,6 +86,12 @@ if [[ -n "$logshuru_timezone" && "$logshuru_timezone" != UTC ]] &&
 	fi
 fi
 
+logshuru_file=${LOGSHURU_FILE:-}
+case "$logshuru_file" in
+"" | /*) ;;
+*) logshuru_file="$PWD/$logshuru_file" ;;
+esac
+
 # Explicit overrides apply only to date, leaving the caller's TZ unchanged.
 logshuru_timestamp() {
 	case "$logshuru_timezone" in
@@ -152,6 +158,10 @@ show_help() {
 	echo -e "${help_colors["WHITE_B"]}Timestamps:${help_colors["END"]}"
 	echo '  LOGSHURU_TIMESTAMP_FORMAT: GNU date format (default: %F %T.%3N)'
 	echo "  LOGSHURU_TZ: UTC or installed IANA name (default: inherited TZ/local time)"
+	echo
+	echo -e "${help_colors["WHITE_B"]}File logging:${help_colors["END"]}"
+	echo "  LOGSHURU_FILE: append plain-text copies alongside stream output (default: off)"
+	echo "  Relative paths are anchored at startup/sourcing; parent directories must exist."
 	echo
 	echo -e "${help_colors["WHITE_B"]}Author:${help_colors["END"]} Mohammed Mubeen Shaikh"
 	echo -e "${help_colors["WHITE_B"]}Contact:${help_colors["END"]} mubeenomics@gmail.com"
@@ -263,13 +273,29 @@ log() {
 	fi
 
 	# Interpret escapes only in color definitions; render message and context literally.
-	printf '%b%s%b | %b%s%b | %b%s%b:%b%s%b:%b%s%b - %b%s%b\n' \
+	local output_status=0
+	if ! printf '%b%s%b | %b%s%b | %b%s%b:%b%s%b:%b%s%b - %b%s%b\n' \
 		"$timestamp_color" "$date" "$reset" \
 		"$color" "$level_padded" "$reset" \
 		"$context_color" "$file_path" "$reset" \
 		"$context_color" "$func_name" "$reset" \
 		"$context_color" "$line_no" "$reset" \
-		"$color" "$message" "$reset" >&"$output_fd"
+		"$color" "$message" "$reset" >&"$output_fd"; then
+		output_status=1
+	fi
+
+	# Attempt both destinations independently, even if the stream write failed.
+	if [[ -n "$logshuru_file" ]]; then
+		if [[ -e "$logshuru_file" && ! -f "$logshuru_file" ]]; then
+			printf 'Error: Log file is not a regular file: %s\n' "$logshuru_file" >&2
+			output_status=1
+		elif ! printf '%s | %s | %s:%s:%s - %s\n' \
+			"$date" "$level_padded" "$file_path" "$func_name" "$line_no" "$message" >>"$logshuru_file"; then
+			printf 'Error: Failed to append log file: %s\n' "$logshuru_file" >&2
+			output_status=1
+		fi
+	fi
+	return "$output_status"
 }
 
 # Set log level

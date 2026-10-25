@@ -11,6 +11,7 @@ setup() {
 	export LOGSHURU_COLOR=always
 	export LOGSHURU_OUTPUT=stdout
 	unset LOGSHURU_TIMESTAMP_FORMAT LOGSHURU_TZ
+	unset LOGSHURU_FILE
 }
 
 # The entry is either the CLI or a public library function.

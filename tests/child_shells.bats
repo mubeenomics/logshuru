@@ -11,6 +11,7 @@ setup() {
 	export LOGSHURU_COLOR=always
 	export LOGSHURU_OUTPUT=stdout
 	unset LOGSHURU_TIMESTAMP_FORMAT LOGSHURU_TZ
+	unset LOGSHURU_FILE
 }
 
 @test "sourcing initializes the library silently without running the CLI" {

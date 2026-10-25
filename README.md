@@ -29,6 +29,7 @@ With 8 configurable log levels, level filtering, and a lightweight Bash-based ru
   - [Colors](#colors)
   - [Output Streams](#output-streams)
   - [Timestamps](#timestamps)
+  - [File Logging](#file-logging)
 - [Contributing](#contributing)
   - [Running Tests](#running-tests)
   - [Static Analysis](#static-analysis)
@@ -44,6 +45,7 @@ With 8 configurable log levels, level filtering, and a lightweight Bash-based ru
 - **8 Log Levels** - From TRACE to CRITICAL for granular control
 - **Level Filtering** - Control what gets logged with configurable minimum log levels
 - **Dual Mode** - Use as a CLI tool or source as a library in your scripts
+- **Optional File Logging** - Append uncolored copies alongside stdout/stderr records
 - **Lightweight Runtime** - Bash plus `date` and `basename`; no language package installation required
 
 ## Installation
@@ -527,6 +529,56 @@ stderr and emits no incomplete log record. Filtered messages do not invoke
 `date`. Colors, source context, and output-stream selection work with custom
 timestamps as usual.
 
+### File Logging
+
+Set `LOGSHURU_FILE` to append a copy of each emitted log record to a file:
+
+```bash
+# Write to stderr and append a plain-text copy to run.log.
+LOGSHURU_FILE="$PWD/run.log" LOGSHURU_OUTPUT=stderr \
+    logshuru INFO "Starting workflow"
+
+# Library configuration is captured when sourced.
+export LOGSHURU_FILE="$PWD/pipeline.log"
+source logshuru
+log PROCESS "Processing sample"
+log SUCCESS "Sample completed"
+```
+
+Unset or empty `LOGSHURU_FILE` disables file logging. Enabling it **duplicates**
+records; it does not replace or alter `LOGSHURU_OUTPUT` routing. File copies use
+the same timestamp, padded level, source context, and message as the stream copy,
+but contain no logger-generated ANSI colors, even with `LOGSHURU_COLOR=always`.
+Literal message content, including user-supplied escape sequences and newlines,
+is preserved. Each record ends with a newline.
+
+The configured path is captured at startup/sourcing. Relative paths are anchored
+to that initialization directory, so a later `cd` does not redirect the parent
+shell's logs. Export an absolute path when child processes should share one file
+regardless of their working directories. Paths are used literally; spaces and
+shell metacharacters are not evaluated.
+
+Files are opened in append mode for each emitted record, creating a missing file
+with the caller's normal `umask` and preserving existing contents. Parent
+directories must already exist. Existing destinations must be regular files;
+directories, FIFOs, and device files are rejected. No file is opened or created
+merely by sourcing the library or requesting help/version/getter output, and
+filtered or invalid calls do not write to the file.
+
+Stream output is attempted first, followed by the file append. Both destinations
+are attempted independently, and logging returns `1` if either write fails.
+File failures produce a diagnostic on stderr when it is writable. A failed append
+does not roll back a successful stream write or any bytes already written to the
+file. Timestamp-generation failures emit neither copy.
+
+`set_log_level` notifications follow the same rules: if their file write fails,
+the setter returns nonzero while the new level remains active. Expected failures
+can be handled with `if`/`||` in strict-mode scripts.
+
+File logging does not add rotation, retention, or interprocess locking. Use an
+external rotation tool when needed. To keep only the file copy, redirect the
+selected stream using normal shell redirection.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a pull request.
@@ -559,6 +611,7 @@ The baseline suite covers:
 | `tests/colors.bats` | Color modes, actual terminals and redirected output, `NO_COLOR` precedence, `TERM=dumb`, initialization errors, and independent stdout/stderr detection |
 | `tests/output.bats` | All levels in all three stream modes for CLI/library calls (48 routing cases), selected/unused descriptor failures, filtering, initialization, child processes, data separation, and selected-stream colors |
 | `tests/timestamps.bats` | Default/custom formats, UTC and named timezones, inherited environment, initialization, timezone database selection, literal rendering, and timestamp-generation failures |
+| `tests/files.bats` | Append/duplication semantics, plain file copies, literal content/paths, filtering, metadata consistency, initialization, child processes, relative paths, and independent destination failures |
 | `tests/configuration.bats` | Environment defaults, normalization, invalid initialization, setter exports, and unchanged settings after rejected input |
 | `tests/arguments.bats` | Missing/empty arguments, multiple message arguments, setter argument counts, and help/version flags, including nounset mode |
 | `tests/child_shells.bats` | Explicit initialization, inherited thresholds, state isolation, and subshell usage |
