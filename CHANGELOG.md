@@ -17,6 +17,10 @@ Changes are recorded here before a release is published. Versions follow
   literal argument forwarding, command-status preservation, and elapsed seconds.
 - Cover the example with integration tests and include example shell files in
   local/CI syntax, lint, formatting, and Bash runtime checks.
+- Scope the runner's stderr default to logger initialization so commands retain
+  caller-exported routing unchanged and do not inherit an introduced setting.
+  Document that killing only the runner may leave its command running and omit
+  completion records; cancellation belongs to the surrounding supervisor.
 - These additions leave the released logger interface and version at `2.0.0`.
 
 ## 2.0.0 — 2026-10-25
