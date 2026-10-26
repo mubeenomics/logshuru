@@ -65,7 +65,7 @@ under root because root can bypass its intended failure.
 | `tests/library.bats` | Loader-function sourcing, namespaces, IFS joins, ordered diagnostics, version/basename-free operation |
 | `tests/strict_mode.bats` | Strict workflows/options, handled/unhandled failures, pipelines, failed writes |
 | `tests/exit_status.bats` | Output/getter/help/version failures and filtered closed descriptors |
-| `tests/examples.bats` | Command-runner argv, streams/stdin, statuses, working directories, configuration/log failures |
+| `tests/examples.bats` | Command-runner argv, streams/stdin, statuses, working directories, environment inheritance, configuration/log failures |
 
 The full suite covers 128 level/threshold cases across CLI/library modes and 48
 level/stream routing cases, in addition to the targeted edge cases above.

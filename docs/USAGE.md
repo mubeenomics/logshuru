@@ -201,7 +201,9 @@ log SUCCESS "Processing completed"
 The checkout's [command-runner example](../examples/README.md) forwards arguments
 directly and logs start, completion/failure, and elapsed seconds. Lifecycle logs
 default to stderr; after initialization, they are best-effort and the command's
-status is preserved. Arguments are omitted from records.
+status is preserved. Arguments are omitted from records. Killing only the runner
+may leave the command running; see the example's
+[cancellation limitation](../examples/README.md#execution-and-status-policy).
 
 ```bash
 bash examples/run_command.sh -- printf '%s\n' 'application data'

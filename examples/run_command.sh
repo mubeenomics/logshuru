@@ -13,9 +13,13 @@ case "${BASH_SOURCE[0]}" in
 *) script_dir=. ;;
 esac
 script_dir=$(CDPATH='' cd -- "$script_dir" && pwd -P)
-export LOGSHURU_OUTPUT=${LOGSHURU_OUTPUT:-stderr}
-# shellcheck source=../logshuru.sh
-source "$script_dir/../logshuru.sh"
+# Keep the runner's default local, preserving even an exported empty child value.
+initialize_logger() {
+	local LOGSHURU_OUTPUT=${LOGSHURU_OUTPUT:-stderr}
+	# shellcheck source=../logshuru.sh
+	source "$script_dir/../logshuru.sh"
+}
+initialize_logger
 
 # Arguments may contain credentials; lifecycle records deliberately omit them.
 # After initialization, logging is best-effort and never replaces command status.

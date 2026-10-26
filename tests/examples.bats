@@ -24,6 +24,36 @@ setup() {
 	[[ "$stderr" =~ $timing ]]
 }
 
+@test "example does not export its default routing to the command" {
+	run --separate-stderr bash "$EXAMPLE" -- bash -euo pipefail -c '
+		[[ ! ${LOGSHURU_OUTPUT+x} ]]
+		printf "%s\n" "child setting is unset"
+	'
+	[ "$status" -eq 0 ]
+	[ "$output" = 'child setting is unset' ]
+	[[ "$stderr" == *"Command started"*"Command completed exit=0"* ]]
+}
+
+@test "example preserves caller-exported routing including an empty value" {
+	local mode
+	for mode in stdout stderr split ''; do
+		export LOGSHURU_OUTPUT="$mode"
+		run --separate-stderr bash "$EXAMPLE" -- bash -euo pipefail -c '
+			[[ ${LOGSHURU_OUTPUT+x} && "$LOGSHURU_OUTPUT" == "$1" ]]
+			printf "%s\n" "child setting preserved"
+		' bash "$mode"
+		[ "$status" -eq 0 ]
+		[[ "$output" == *"child setting preserved"* ]]
+		if [[ "$mode" == stdout ]]; then
+			[[ "$output" == *"Command started"*"Command completed exit=0"* ]]
+			[ -z "$stderr" ]
+		elif [[ -z "$mode" || "$mode" == stderr ]]; then
+			[ "$output" = 'child setting preserved' ]
+			[[ "$stderr" == *"Command started"*"Command completed exit=0"* ]]
+		fi
+	done
+}
+
 @test "example preserves a failed command status and its diagnostics" {
 	run --separate-stderr bash "$EXAMPLE" -- bash "$FIXTURE" streams 23
 	[ "$status" -eq 23 ]

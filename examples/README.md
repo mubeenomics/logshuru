@@ -29,6 +29,10 @@ LOGSHURU_FORMAT=json bash examples/run_command.sh -- printf '%s\n' 'JSON run'
 Normal [logshuru settings](../docs/CONFIGURATION.md) apply. A nonempty
 `LOGSHURU_OUTPUT` explicitly overrides the example's stderr default;
 `stdout`/`split` can mix logger records with data.
+The default is scoped to the runner's logger initialization: it is not introduced
+into the command's environment. Caller-exported settings reach the command
+unchanged, including an empty value. An empty value selects stderr for the
+runner, but retains its usual library-default meaning in a child using logshuru.
 Colors retain the logger's `auto` default. Command stdout/stderr are inherited
 directly, with no prefixing, capture, or logging pipeline. Consequently, stderr
 can contain both lifecycle records and tool diagnostics. JSON mode formats only
@@ -49,6 +53,12 @@ logger records; it does not turn arbitrary tool stderr into a JSON Lines stream.
   prevent command execution or replace its status. A successful command still
   exits `0` if a lifecycle log write fails. A missing executable normally yields
   Bash status `127`; a non-executable command yields `126`.
+
+**Cancellation limitation:** killing only the runner may leave its command
+running, and abrupt termination may prevent a completion record. The runner does
+not forward signals or manage a process tree. Use the surrounding job runner or
+supervisor to manage cancellation of the entire process group. Best-effort logging
+does not guarantee cleanup or completion records when interrupted.
 
 The application chooses this policy; the logger itself still reports write
 failures. See the [usage guide](../docs/USAGE.md#strict-mode-and-exit-statuses) for
