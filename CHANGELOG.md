@@ -5,6 +5,13 @@ Changes are recorded here before a release is published. Versions follow
 
 ## Unreleased
 
+### Fixed
+
+- `set_log_level` reports an invalid level with the same diagnostic shape as the
+  rest of the logger (`Error: '<value>' is not a valid log level.`) instead of a
+  `Warning:` prefix, and echoes the value as given instead of uppercased. No
+  behavior change beyond the message text.
+
 ### Documentation and examples
 
 - Keep the project general-purpose; domain-specific workflow logic belongs in
