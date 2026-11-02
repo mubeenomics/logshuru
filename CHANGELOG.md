@@ -5,12 +5,22 @@ Changes are recorded here before a release is published. Versions follow
 
 ## Unreleased
 
-### Fixed
+### Planned
 
-- `set_log_level` reports an invalid level with the same diagnostic shape as the
-  rest of the logger (`Error: '<value>' is not a valid log level.`) instead of a
-  `Warning:` prefix, and echoes the value as given instead of uppercased. No
-  behavior change beyond the message text.
+- Make `set_log_level` report an invalid level with the same diagnostic shape
+  as the rest of the logger (`Error: '<value>' is not a valid log level.`)
+  instead of a `Warning:` prefix, and echo the value as given instead of
+  uppercased. Not yet implemented in the script; queued here so a diagnostic-only
+  change is not lost before the next release.
+
+### Notes
+
+- A 2026-11-02 git-history rewrite removed a work email address from commit
+  author metadata. Previously published commit and tag identifiers changed:
+  `v2.0.0` now points to `f0c8ecd18ba0b3fdf8f0d174c0be50ed2a0c668c`. File
+  contents and the published release script did not change, and its SHA-256
+  (`520cd796f8c2ad4a2a4a8298566731ba17c5e10a7e3392fdfa854f6bd5c2db6e`) is
+  unchanged.
 
 ### Documentation and examples
 
