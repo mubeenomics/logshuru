@@ -138,8 +138,12 @@ copies contain the exact same object as the stream.
 The file opens in append mode per emitted event, creates missing files with caller
 umask, and preserves existing contents. Parent directories must exist. Existing
 destinations must be regular files; directories, FIFOs, and devices are rejected.
-Sourcing, help/version/getter output, invalid calls, and filtered events do not
-open/create the file.
+Symlinks are not checked: a symlink to a regular file is accepted and written
+through to its target, and a dangling symlink creates the missing target file.
+When the destination sits in a directory other users can write, such a symlink
+can redirect or create files outside the intended path — point `LOGSHURU_FILE`
+at paths in directories only you can write. Sourcing, help/version/getter
+output, invalid calls, and filtered events do not open/create the file.
 
 Stream output is attempted first, then file append independently. Logging returns
 `1` if either fails. File errors are diagnosed on stderr when writable. Failed

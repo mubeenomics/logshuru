@@ -140,3 +140,7 @@ workflow logic belongs in the applications using it.
 ## Acknowledgments
 
 Inspired by the excellent [loguru](https://github.com/Delgan/loguru) library for Python.
+
+## License
+
+Released under the [MIT License](LICENSE), copyright Mohammed Mubeen Shaikh.
