@@ -5,7 +5,6 @@ A general-purpose Bash logger, inspired by Python's
 scripts for colored text or JSON Lines with timestamps and caller context.
 
 **Current release: [v2.0.0](https://github.com/mubeenomics/logshuru/releases/tag/v2.0.0)**
-· [Changelog](CHANGELOG.md)
 
 ## Features
 
@@ -132,7 +131,7 @@ precedence, stream routing, colors, timestamps, file failures, and JSON schema.
 - [Command-runner example](examples/README.md) — lifecycle logs around an arbitrary command.
 - [Design](docs/DESIGN.md) — rationale and implementation boundaries.
 - [Contributing](CONTRIBUTING.md) — development tools, tests, formatting, and CI.
-- [Changelog](CHANGELOG.md) · [Release procedure](RELEASING.md)
+- [Release procedure](RELEASING.md)
 
 Contributions are welcome. logshuru stays general-purpose; domain-specific
 workflow logic belongs in the applications using it.

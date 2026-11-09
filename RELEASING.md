@@ -11,14 +11,16 @@ Use semantic versions and tags of the form `vMAJOR.MINOR.PATCH`.
 - The public library functions are `log`, `set_log_level`, and `get_log_level`.
   `_logshuru_*` names are private implementation details.
 
-The current version is `2.0.0`. Its changelog section collects all changes since
-the historical `1.0.0` baseline, including previously committed compatibility
+The current version is `2.0.0`. Its release notes collect all changes since the
+historical `1.0.0` baseline, including previously committed compatibility
 changes. Future development snapshots should use the next planned `-dev` version.
 
 ## Prepare
 
-1. Review the complete changes and move the unreleased changelog section to a
-   dated version heading. Make migration instructions prominent.
+1. Review the complete changes and draft the release notes with the migrated
+   behavior and prominent migration instructions. There is no in-repo changelog
+   file; the published release notes and the commit history are the change
+   record.
 2. Set `_logshuru_version` in `logshuru.sh` to the release version without `v` or
    `-dev`, update version assertions in `tests/library.bats` and `tests/json.bats`,
    and update the README's development/release status.
@@ -52,7 +54,7 @@ release create` or `gh release upload`). Release notes should contain:
 
 - The version, full commit SHA, supported Bash minimum, and migration notes.
 - The script's SHA-256 copied from `SHA256SUMS`.
-- Links to the changelog and the version-pinned script/checksum assets.
+- Links to the version-pinned script/checksum assets.
 - Installation commands with concrete `LOGSHURU_REVISION` and `LOGSHURU_SHA256`
   values for the [commit-pinned download](docs/INSTALLATION.md#version-pinned-download).
 
@@ -74,5 +76,6 @@ development snapshot or checksum a different working-tree copy.
    guide's commit-pinned defaults once the release is available. Only then
    announce the release as installable and verified.
 
-For subsequent development, create a new unreleased changelog section and advance
-the script and version assertions to the next planned `-dev` version.
+For subsequent development, advance the script and version assertions to the
+next planned `-dev` version and record notable changes so they are ready for
+the next release's notes.

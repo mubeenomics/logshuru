@@ -147,7 +147,7 @@ with [actionlint](https://github.com/rhysd/actionlint).
 
 ## Compatibility and releases
 
-Keep documented behavior and regression coverage aligned. Record changes in
-[CHANGELOG.md](CHANGELOG.md); compatibility rules and publication procedures live
-in [RELEASING.md](RELEASING.md). Use that guide for tags, assets, checksums, and
-published-install verification.
+Keep documented behavior and regression coverage aligned. Compatibility rules
+and publication procedures live in [RELEASING.md](RELEASING.md). Use that guide
+for tags, assets, checksums, and published-install verification; record user-
+visible changes in the release notes.

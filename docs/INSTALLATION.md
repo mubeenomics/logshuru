@@ -56,7 +56,7 @@ values from its trusted checkout or release notes.
 ```bash
 (
     set -euo pipefail
-    LOGSHURU_REVISION=${LOGSHURU_REVISION:-f0c8ecd18ba0b3fdf8f0d174c0be50ed2a0c668c}
+    LOGSHURU_REVISION=${LOGSHURU_REVISION:-4f3425fc94742c6461b276a92b374060a324fba5}
     LOGSHURU_SHA256=${LOGSHURU_SHA256:-520cd796f8c2ad4a2a4a8298566731ba17c5e10a7e3392fdfa854f6bd5c2db6e}
     [[ "$LOGSHURU_REVISION" =~ ^[0-9a-f]{40}$ ]]
     [[ "$LOGSHURU_SHA256" =~ ^[0-9a-f]{64}$ ]]
