@@ -36,8 +36,9 @@ fractional-second digits. Timestamps default to local time, honoring inherited
 
 CI targets **Ubuntu 22.04 on x86_64** with GNU coreutils. The full suite runs on
 system Bash 5.1 and source-built Bash 4.2, 4.4, and 5.2. Local verification also
-covers those source-built versions and Bash 5.1.16. A **macOS 14** job runs the
-suite with Homebrew Bash, the system BSD `date`, and Homebrew `gdate`.
+covers those source-built versions and Bash 5.1.16. A **macOS** job on the
+latest GitHub-hosted runner runs the suite with Homebrew Bash, the system BSD
+`date`, and Homebrew `gdate`.
 
 Source builds deliberately use the original, unpatched **4.2.0, 4.4.0, and 5.2.0**
 tarballs to exercise language-feature baselines; distribution builds generally
