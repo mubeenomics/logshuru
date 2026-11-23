@@ -83,12 +83,15 @@ setup() {
 }
 
 @test "example finds the library while preserving a different command working directory" {
+	# The fixture prints pwd -P; macOS temp dirs sit behind the /var symlink.
+	local expected
+	expected=$(cd "$BATS_TEST_TMPDIR" && pwd -P)
 	run --separate-stderr bash -euo pipefail -c '
 		cd "$3"
 		bash "$1" -- bash "$2" directory
 	' bash "$EXAMPLE" "$FIXTURE" "$BATS_TEST_TMPDIR"
 	[ "$status" -eq 0 ]
-	[ "$output" = "$BATS_TEST_TMPDIR" ]
+	[ "$output" = "$expected" ]
 }
 
 @test "example can run by its bare filename from the examples directory" {
