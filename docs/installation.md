@@ -6,9 +6,12 @@
 
 - **Bash 4.2 or later.** Global associative arrays (`declare -gA`) allow sourcing
   inside loader functions. Older Bash versions fail initialization with a
-  diagnostic. POSIX sh, Dash, and Zsh are not supported interpreters.
+  diagnostic. POSIX sh, Dash, and Zsh are not supported interpreters for the
+  library; the CLI runs under Bash from any interactive shell, including Zsh.
 - **GNU-compatible `date` on PATH.** The default `date +"%F %T.%3N"` must support
   `%F`, `%T`, and `%3N` for millisecond timestamps. GNU coreutils provides it.
+  When `date` runs but lacks `%N` support (BSD date on macOS), logshuru uses GNU
+  `gdate` instead if it is on PATH.
 - **Installed timezone data for named overrides.** For example,
   `LOGSHURU_TZ=Asia/Kolkata` requires that zone under `/usr/share/zoneinfo` or the
   directory selected by `TZDIR`. Linux distributions normally provide `tzdata`.
@@ -33,18 +36,32 @@ fractional-second digits. Timestamps default to local time, honoring inherited
 
 CI targets **Ubuntu 22.04 on x86_64** with GNU coreutils. The full suite runs on
 system Bash 5.1 and source-built Bash 4.2, 4.4, and 5.2. Local verification also
-covers those source-built versions and Bash 5.1.16.
+covers those source-built versions and Bash 5.1.16. A **macOS 14** job runs the
+suite with Homebrew Bash, the system BSD `date`, and Homebrew `gdate`.
 
 Source builds deliberately use the original, unpatched **4.2.0, 4.4.0, and 5.2.0**
 tarballs to exercise language-feature baselines; distribution builds generally
 include later patches. Other platforms are not covered by CI.
 
-The default Bash 3.2 and BSD date shipped with macOS do not meet the requirements.
-Provide a newer Bash and a GNU-compatible command named `date` on PATH. Installing
-only `gdate` does not change the logger's `date` invocation.
+The script uses `#!/usr/bin/env bash`, so it runs under the first `bash` on PATH.
 
-The script uses `#!/bin/bash`. If a suitable Bash is installed elsewhere, invoke
-that interpreter explicitly or source the library from a script running under it.
+### macOS
+
+macOS ships Bash 3.2 and BSD `date`, which do not meet the requirements. Install
+a current Bash and GNU coreutils with [Homebrew](https://brew.sh):
+
+```bash
+brew install bash coreutils
+bash --version          # 4.2 or later; Homebrew's bin must precede /bin on PATH
+gdate +"%F %T.%3N"      # YYYY-MM-DD HH:MM:SS.mmm
+```
+
+logshuru then uses `gdate` automatically; no PATH changes to coreutils are
+needed. The CLI works from the default Zsh shell. Scripts that `source` the
+library must run under Bash (`#!/usr/bin/env bash`), not Zsh.
+
+macOS support was added after v2.0.0. Until the next release, use
+[Install from a checkout](#install-from-a-checkout).
 
 ## Version-pinned download
 

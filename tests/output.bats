@@ -195,7 +195,7 @@ invoke_with_closed_descriptor() {
 }
 
 @test "automatic colors use selected stderr terminal status in stderr and split modes" {
-	command -v script >/dev/null || skip "terminal tests require util-linux script"
+	script --version >/dev/null 2>&1 || skip "terminal tests require util-linux script"
 	export LOGSHURU_COLOR=auto TERM=xterm
 	unset NO_COLOR
 	local command
@@ -211,7 +211,7 @@ invoke_with_closed_descriptor() {
 }
 
 @test "automatic colors stay off for redirected stderr even when stdout is a terminal" {
-	command -v script >/dev/null || skip "terminal tests require util-linux script"
+	script --version >/dev/null 2>&1 || skip "terminal tests require util-linux script"
 	export LOGSHURU_OUTPUT=stderr LOGSHURU_COLOR=auto TERM=xterm
 	unset NO_COLOR
 	local command

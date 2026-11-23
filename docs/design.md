@@ -64,6 +64,9 @@ logger colors rather than contaminating machine-consumed output.
 One date result is reused across stream/file copies so metadata agrees. GNU date
 retains format/timezone functionality across the supported Bash versions.
 Overrides apply to date without mutating the caller's timezone environment.
+The date command is resolved once per shell, on the first emitted record: when
+`date` succeeds without `%N` support (BSD date), `gdate` is used if present. A
+failing probe keeps `date`, so genuine date failures still surface as errors.
 
 File logging duplicates records and attempts destinations independently: a failed
 stream should not prevent a useful file copy, or vice versa. No rollback can undo

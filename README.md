@@ -19,7 +19,8 @@ scripts for colored text or JSON Lines with timestamps and caller context.
 ## Requirements
 
 **Bash 4.2+** and **GNU-compatible `date`** with millisecond formatting (`%3N`).
-Default macOS Bash 3.2 and BSD date do not meet these requirements. See
+On macOS, install both with `brew install bash coreutils`; logshuru uses `gdate`
+automatically (see [macOS](docs/installation.md#macos)). See
 [installation and platform details](docs/installation.md).
 
 ## Install
@@ -62,7 +63,7 @@ shell's source location.
 ### Library
 
 ```bash
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 source "$HOME/.local/bin/logshuru"
 

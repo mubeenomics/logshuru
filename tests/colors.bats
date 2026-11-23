@@ -26,7 +26,7 @@ assert_plain_message() {
 }
 
 require_terminal_tool() {
-	command -v script >/dev/null || skip "terminal tests require util-linux script"
+	script --version >/dev/null 2>&1 || skip "terminal tests require util-linux script"
 }
 
 invoke_on_terminal() {

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Global associative arrays require declare -g (introduced in Bash 4.2).
 if ((BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 2))); then
@@ -120,12 +120,33 @@ text | json) ;;
 	;;
 esac
 
+# Resolved lazily on the first emitted record, so sourcing never runs date.
+_logshuru_date_cmd=''
+
+# BSD date (macOS) lacks %N; prefer GNU gdate when date works without it.
+# A failing probe never switches commands, so real date failures still surface.
+_logshuru_resolve_date_cmd() {
+	[[ -n "$_logshuru_date_cmd" ]] && return 0
+	local probe
+	if probe=$(date +%3N 2>/dev/null); then
+		if [[ "$probe" =~ ^[0-9]{3}$ ]]; then
+			_logshuru_date_cmd='date'
+		elif command -v gdate >/dev/null 2>&1; then
+			_logshuru_date_cmd='gdate'
+		else
+			_logshuru_date_cmd='date'
+		fi
+	fi
+	return 0
+}
+
 # Explicit overrides apply only to date, leaving the caller's TZ unchanged.
 _logshuru_timestamp() {
+	local date_cmd=${_logshuru_date_cmd:-date}
 	case "$_logshuru_timezone" in
-	UTC) TZ=UTC0 date +"$_logshuru_timestamp_format" ;;
-	"") date +"$_logshuru_timestamp_format" ;;
-	*) TZDIR="$_logshuru_zoneinfo_dir" TZ=":$_logshuru_timezone" date +"$_logshuru_timestamp_format" ;;
+	UTC) TZ=UTC0 "$date_cmd" +"$_logshuru_timestamp_format" ;;
+	"") "$date_cmd" +"$_logshuru_timestamp_format" ;;
+	*) TZDIR="$_logshuru_zoneinfo_dir" TZ=":$_logshuru_timezone" "$date_cmd" +"$_logshuru_timestamp_format" ;;
 	esac
 }
 
@@ -233,6 +254,7 @@ _logshuru_show_help() {
 	echo
 	echo -e "${help_colors["WHITE_B"]}Timestamps:${help_colors["END"]}"
 	echo '  LOGSHURU_TIMESTAMP_FORMAT: GNU date format (default: %F %T.%3N)'
+	echo "  On macOS, GNU gdate is used automatically when date lacks %N support."
 	echo "  LOGSHURU_TZ: UTC or installed IANA name (default: inherited TZ/local time)"
 	echo
 	echo -e "${help_colors["WHITE_B"]}File logging:${help_colors["END"]}"
@@ -336,6 +358,7 @@ _logshuru_emit() {
 	esac
 
 	local date file_path
+	_logshuru_resolve_date_cmd
 	if ! date=$(_logshuru_timestamp); then
 		printf 'Error: Failed to generate log timestamp\n' >&2
 		return 1

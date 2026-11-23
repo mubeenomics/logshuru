@@ -18,10 +18,42 @@ setup() {
 
 freeze_time() {
 	# Exercise real GNU date formatting/timezones against a fixed instant.
+	# On macOS, GNU date is installed as gdate and date is BSD.
+	GNU_DATE=$(type -P gdate || type -P date)
+	export GNU_DATE
 	# Exported stubs are invoked indirectly by the child Bash processes.
 	# shellcheck disable=SC2317
-	date() { command date --date='2026-10-23T10:30:00.123Z' "$@"; }
+	date() { command "$GNU_DATE" --date='2026-10-23T10:30:00.123Z' "$@"; }
 	export -f date
+}
+
+# Build a directory holding only bash plus stub date/gdate commands. It becomes
+# the logger's whole PATH, so a real gdate elsewhere on PATH (for example
+# Homebrew on macOS) cannot interfere.
+# Usage: use_date_stubs bsd|gnu [with-gdate]
+use_date_stubs() {
+	local flavor="$1" stub_dir="$BATS_TEST_TMPDIR/stub-bin" bash_path
+	bash_path=$(type -P bash)
+	mkdir -p "$stub_dir"
+	ln -s "$bash_path" "$stub_dir/bash"
+	if [[ "$flavor" == bsd ]]; then
+		# BSD date prints an unsupported %3N as the literal text 3N.
+		printf '#!%s\nformat=${1#+}\nprintf "%%s\\n" "BSDDATE ${format//%%3N/3N}"\n' \
+			"$bash_path" >"$stub_dir/date"
+	else
+		printf '#!%s\n[[ "$1" == +%%3N ]] && { echo 123; exit; }\necho GNUDATE\n' \
+			"$bash_path" >"$stub_dir/date"
+	fi
+	if [[ "${2:-}" == with-gdate ]]; then
+		printf '#!%s\necho GDATE\n' "$bash_path" >"$stub_dir/gdate"
+	fi
+	chmod +x "$stub_dir"/*date
+	STUB_PATH="$stub_dir"
+}
+
+# Restrict PATH for the logger only; Bats itself still needs the full PATH.
+invoke_with_stubs() {
+	PATH="$STUB_PATH" invoke_logger "$@"
 }
 
 @test "unset and empty timestamp settings preserve the existing default format" {
@@ -212,4 +244,34 @@ freeze_time() {
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"system timezone" ]]
 	[ -z "$stderr" ]
+}
+
+@test "BSD date without millisecond support falls back to gdate" {
+	use_date_stubs bsd with-gdate
+	for mode in cli library; do
+		run --separate-stderr invoke_with_stubs "$mode" INFO "gdate fallback"
+		[ "$status" -eq 0 ]
+		[[ "$output" == 'GDATE | INFO     | '*'gdate fallback' ]]
+		[ -z "$stderr" ]
+	done
+}
+
+@test "BSD date without gdate keeps using date" {
+	use_date_stubs bsd
+	for mode in cli library; do
+		run --separate-stderr invoke_with_stubs "$mode" INFO "no gdate"
+		[ "$status" -eq 0 ]
+		[[ "$output" == 'BSDDATE %F %T.3N | INFO     | '*'no gdate' ]]
+		[ -z "$stderr" ]
+	done
+}
+
+@test "date with millisecond support is preferred over gdate" {
+	use_date_stubs gnu with-gdate
+	for mode in cli library; do
+		run --separate-stderr invoke_with_stubs "$mode" INFO "GNU date"
+		[ "$status" -eq 0 ]
+		[[ "$output" == 'GNUDATE | INFO     | '*'GNU date' ]]
+		[ -z "$stderr" ]
+	done
 }

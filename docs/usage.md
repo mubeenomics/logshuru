@@ -78,7 +78,7 @@ defaults and normalization.
 logshuru supports `set -euo pipefail` and preserves caller shell options:
 
 ```bash
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 source "$HOME/.local/bin/logshuru"
 set_log_level WARNING

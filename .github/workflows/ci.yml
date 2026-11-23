@@ -152,3 +152,60 @@ jobs:
             bash -n "$file"
           done
           bats tests
+
+  macos:
+    name: macOS (Homebrew Bash, BSD date + gdate)
+    runs-on: macos-14
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Install Homebrew Bash and GNU coreutils
+        run: |
+          brew install bash coreutils jq
+          # Homebrew Bash must win over /bin/bash 3.2; coreutils' gnubin stays off
+          # PATH so date remains BSD and the gdate fallback is exercised.
+          printf '%s\n' "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+
+      - name: Install pinned Bats
+        run: |
+          tools_dir="$RUNNER_TEMP/logshuru-tools"
+          mkdir -p "$tools_dir"
+          curl --fail --silent --show-error --location \
+            "https://github.com/bats-core/bats-core/archive/refs/tags/v${BATS_VERSION}.tar.gz" \
+            --output "$tools_dir/bats.tar.gz"
+          printf '%s  %s\n' "$BATS_SHA256" "$tools_dir/bats.tar.gz" | shasum -a 256 --check --strict
+          tar -xzf "$tools_dir/bats.tar.gz" -C "$tools_dir"
+          "$tools_dir/bats-core-${BATS_VERSION}/install.sh" "$tools_dir"
+          printf '%s\n' "$tools_dir/bin" >> "$GITHUB_PATH"
+
+      - name: Verify the macOS environment
+        run: |
+          bash --version
+          [[ "$(command -v bash)" != /bin/bash ]]
+          [[ "$(command -v date)" == /bin/date ]]
+          [[ ! "$(date +%3N)" =~ ^[0-9]{3}$ ]]
+          gdate +"%F %T.%3N"
+          bats --version
+          jq --version
+
+      - name: Check Bash syntax
+        run: |
+          for file in logshuru.sh examples/*.sh tests/*.bash tests/fixtures/*.bash; do
+            bash -n "$file"
+          done
+
+      - name: Run the CLI through its shebang with millisecond timestamps
+        run: |
+          record=$(LOGSHURU_COLOR=never ./logshuru.sh INFO "macOS CLI record")
+          printf '%s\n' "$record"
+          [[ "$record" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}\ \| ]]
+
+      - name: Run Bats tests
+        run: bats tests
