@@ -11,9 +11,10 @@ Use semantic versions and tags of the form `vMAJOR.MINOR.PATCH`.
 - The public library functions are `log`, `set_log_level`, and `get_log_level`.
   `_logshuru_*` names are private implementation details.
 
-The current version is `2.0.0`. Its release notes collect all changes since the
-historical `1.0.0` baseline, including previously committed compatibility
-changes. Future development snapshots should use the next planned `-dev` version.
+The current version is `2.1.0`. Each release's notes collect the changes since
+the previous release; the `2.0.0` notes cover everything since the historical
+`1.0.0` baseline. Future development snapshots should use the next planned `-dev`
+version.
 
 ## Prepare
 

@@ -61,8 +61,8 @@ logshuru then uses `gdate` automatically; no PATH changes to coreutils are
 needed. The CLI works from the default Zsh shell. Scripts that `source` the
 library must run under Bash (`#!/usr/bin/env bash`), not Zsh.
 
-macOS support was added after v2.0.0. Until the next release, use
-[Install from a checkout](#install-from-a-checkout).
+macOS support requires logshuru v2.1.0 or later. macOS has no `sha256sum`; in
+the installation commands, use `shasum -a 256 --check --strict` instead.
 
 ## Version-pinned download
 

@@ -11,7 +11,7 @@ if ((BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 2))); 
 fi
 
 # Internal state and helpers use a reserved project namespace.
-_logshuru_version="2.0.0"
+_logshuru_version="2.1.0"
 _logshuru_default_log_level="PROCESS"
 _logshuru_valid_levels='TRACE DEBUG PROCESS INFO SUCCESS WARNING ERROR CRITICAL'
 

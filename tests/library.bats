@@ -108,7 +108,7 @@ setup() {
 @test "version uses executable basename and the release version" {
 	run --separate-stderr bash "$LOGSHURU" --version
 	[ "$status" -eq 0 ]
-	[ "$output" = 'logshuru.sh v2.0.0' ]
+	[ "$output" = 'logshuru.sh v2.1.0' ]
 	[ -z "$stderr" ]
 }
 
