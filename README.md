@@ -34,16 +34,17 @@ bin directory. Run this block in Bash:
     download_dir=$(mktemp -d)
     trap 'rm -rf -- "$download_dir"' EXIT
     curl --fail --silent --show-error --location \
-        https://github.com/mubeenomics/logshuru/releases/download/v2.0.0/logshuru.sh \
+        https://github.com/mubeenomics/logshuru/releases/download/v2.1.0/logshuru.sh \
         --output "$download_dir/logshuru.sh"
     printf '%s  %s\n' \
-        520cd796f8c2ad4a2a4a8298566731ba17c5e10a7e3392fdfa854f6bd5c2db6e \
+        1a7b88618b7e9d933d102a2f4c0d9b5715eb7f6c0a64d897ecdb489cc53bfcc2 \
         "$download_dir/logshuru.sh" | sha256sum --check --strict
     mkdir -p "$HOME/.local/bin"
     install -m 755 "$download_dir/logshuru.sh" "$HOME/.local/bin/logshuru"
 )
 ```
 
+On macOS, replace `sha256sum --check --strict` with `shasum -a 256 --check --strict`.
 Add `$HOME/.local/bin` to PATH for CLI use. For commit-pinned downloads, checkout
 installation, and environment checks, see the [installation guide](docs/installation.md).
 

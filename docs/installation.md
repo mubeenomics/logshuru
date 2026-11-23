@@ -66,7 +66,7 @@ the installation commands, use `shasum -a 256 --check --strict` instead.
 
 ## Version-pinned download
 
-The following installs **v2.0.0**, pinned to its full release commit and published
+The following installs **v2.1.0**, pinned to its full release commit and published
 SHA-256. It stops on download or checksum failure. To choose another reviewed
 revision, set both `LOGSHURU_REVISION` and `LOGSHURU_SHA256` beforehand using
 values from its trusted checkout or release notes.
@@ -74,8 +74,8 @@ values from its trusted checkout or release notes.
 ```bash
 (
     set -euo pipefail
-    LOGSHURU_REVISION=${LOGSHURU_REVISION:-4f3425fc94742c6461b276a92b374060a324fba5}
-    LOGSHURU_SHA256=${LOGSHURU_SHA256:-520cd796f8c2ad4a2a4a8298566731ba17c5e10a7e3392fdfa854f6bd5c2db6e}
+    LOGSHURU_REVISION=${LOGSHURU_REVISION:-8c09f2a3192d56d276f764406e7780cd88d768e5}
+    LOGSHURU_SHA256=${LOGSHURU_SHA256:-1a7b88618b7e9d933d102a2f4c0d9b5715eb7f6c0a64d897ecdb489cc53bfcc2}
     [[ "$LOGSHURU_REVISION" =~ ^[0-9a-f]{40}$ ]]
     [[ "$LOGSHURU_SHA256" =~ ^[0-9a-f]{64}$ ]]
     download_dir=$(mktemp -d)
@@ -107,12 +107,12 @@ run `sudo install -m 755 logshuru.sh /usr/local/bin/logshuru`.
 
 ## Release assets and integrity
 
-The [v2.0.0 release](https://github.com/mubeenomics/logshuru/releases/tag/v2.0.0)
+The [v2.1.0 release](https://github.com/mubeenomics/logshuru/releases/tag/v2.1.0)
 provides `logshuru.sh` and `SHA256SUMS`. The assets and commit-pinned installation
 have been verified against the same hash:
 
 ```text
-520cd796f8c2ad4a2a4a8298566731ba17c5e10a7e3392fdfa854f6bd5c2db6e
+1a7b88618b7e9d933d102a2f4c0d9b5715eb7f6c0a64d897ecdb489cc53bfcc2
 ```
 
 When downloading both assets into one directory, verify them with
