@@ -1,7 +1,7 @@
 # Contributing to logshuru
 
-Contributions are welcome. See the [design decisions](docs/DESIGN.md) and
-[configuration reference](docs/CONFIGURATION.md) before changing behavior.
+Contributions are welcome. See the [design decisions](docs/design.md) and
+[configuration reference](docs/configuration.md) before changing behavior.
 Run commands below from the repository root.
 
 ## Development tools
@@ -131,7 +131,7 @@ Bash/Bats formatting, and Bats commands above as separate steps.
 Runtime jobs build Bash 4.2, 4.4, and 5.2 from pinned GNU archives and run syntax
 checks plus the full suite. Each selected interpreter is first on PATH for Bats
 and its child shells; its version is asserted before testing. See
-[platform compatibility](docs/INSTALLATION.md#platform-compatibility) for the
+[platform compatibility](docs/installation.md#platform-compatibility) for the
 original unpatched build baselines.
 
 All downloaded tools/source archives are checked against pinned SHA-256 hashes

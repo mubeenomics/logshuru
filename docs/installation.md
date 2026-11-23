@@ -1,6 +1,6 @@
 # Installation and platform requirements
 
-[Quick start](../README.md) · [Usage](USAGE.md) · [Configuration](CONFIGURATION.md)
+[Quick start](../README.md) · [Usage](usage.md) · [Configuration](configuration.md)
 
 ## Runtime requirements
 
@@ -27,7 +27,7 @@ date +"%F %T.%3N"
 
 The last command should print `YYYY-MM-DD HH:MM:SS.mmm`, with three numeric
 fractional-second digits. Timestamps default to local time, honoring inherited
-`TZ`; see [timestamp configuration](CONFIGURATION.md#timestamps).
+`TZ`; see [timestamp configuration](configuration.md#timestamps).
 
 ## Platform compatibility
 

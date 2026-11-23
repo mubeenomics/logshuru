@@ -1,6 +1,6 @@
 # Configuration and output reference
 
-[Quick start](../README.md) · [Usage](USAGE.md) · [Installation](INSTALLATION.md)
+[Quick start](../README.md) · [Usage](usage.md) · [Installation](installation.md)
 
 ## Settings
 
@@ -141,7 +141,7 @@ destinations must be regular files; directories, FIFOs, and devices are rejected
 Symlinks are not checked: a symlink to a regular file is accepted and written
 through to its target, and a dangling symlink creates the missing target file.
 When the destination sits in a directory other users can write, such a symlink
-can redirect or create files outside the intended path — point `LOGSHURU_FILE`
+can redirect or create files outside the intended path. Point `LOGSHURU_FILE`
 at paths in directories only you can write. Sourcing, help/version/getter
 output, invalid calls, and filtered events do not open/create the file.
 
@@ -179,7 +179,7 @@ LOGSHURU_FORMAT=json LOGSHURU_TZ=UTC \
 | `line` | number | One-based call line; 0 means unavailable |
 | `message` | string | Original message, fragments joined as in text mode |
 
-See [source context](USAGE.md#source-context) for invocation details. JSON does
+See [source context](usage.md#source-context) for invocation details. JSON does
 not change timestamp defaults: the example explicitly chooses UTC and an
 ISO-style format. Without those settings, inherited TZ/local time and `%F %T.%3N`
 still apply. Logger colors are suppressed even with LOGSHURU_COLOR=always.

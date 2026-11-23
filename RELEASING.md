@@ -56,7 +56,7 @@ release create` or `gh release upload`). Release notes should contain:
 - The script's SHA-256 copied from `SHA256SUMS`.
 - Links to the version-pinned script/checksum assets.
 - Installation commands with concrete `LOGSHURU_REVISION` and `LOGSHURU_SHA256`
-  values for the [commit-pinned download](docs/INSTALLATION.md#version-pinned-download).
+  values for the [commit-pinned download](docs/installation.md#version-pinned-download).
 
 Generate checksums after finalizing the version. Do not reuse a checksum from a
 development snapshot or checksum a different working-tree copy.

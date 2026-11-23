@@ -1,6 +1,6 @@
 # Usage guide
 
-[Quick start](../README.md) · [Installation](INSTALLATION.md) · [Configuration](CONFIGURATION.md)
+[Quick start](../README.md) · [Installation](installation.md) · [Configuration](configuration.md)
 
 Examples assume the installed script is named `logshuru` on PATH. To use a
 checkout directly, invoke `bash ./logshuru.sh` or source its absolute path.
@@ -70,7 +70,7 @@ active/exported. A filtered notification succeeds. The notification's context
 identifies the application's setter call.
 
 `get_log_level` prints the uppercase active level on stdout. See
-[configuration initialization](CONFIGURATION.md#initialization) for environment
+[configuration initialization](configuration.md#initialization) for environment
 defaults and normalization.
 
 ## Strict mode and exit statuses
@@ -130,7 +130,7 @@ A text record includes timestamp, padded level, and source context:
 ```
 
 **Untrusted messages:** preserved newlines/terminal escapes can imitate additional
-records or formatting. Use [JSON mode](CONFIGURATION.md#json-lines) for single-line
+records or formatting. Use [JSON mode](configuration.md#json-lines) for single-line
 framing of untrusted messages or metadata, including source filenames/timestamps.
 
 ### Source context

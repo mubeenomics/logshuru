@@ -1,6 +1,6 @@
 # Design decisions
 
-[Quick start](../README.md) · [Usage contract](USAGE.md) · [Configuration reference](CONFIGURATION.md)
+[Quick start](../README.md) · [Usage contract](usage.md) · [Configuration reference](configuration.md)
 
 This document explains why logshuru behaves as it does. The usage and
 configuration guides own the detailed user-facing contract; examples and tests
@@ -24,14 +24,14 @@ Configuration is captured when starting/sourcing so accidental later environment
 assignments do not silently reconfigure a running script. The setter provides an
 explicit level update and exports the choice for future child initialization.
 Ambient terminal state remains dynamic because per-call redirections matter.
-See [initialization rules](CONFIGURATION.md#initialization).
+See [initialization rules](configuration.md#initialization).
 
 Each new Bash process sources the library rather than inheriting incomplete
 exported functions without their helpers/arrays. Global associative arrays allow
 loader-function sourcing. Declaration and assignment are separate because Bash
 4.2's combined form initializes empty global arrays in that context. This is the
 reason for the Bash 4.2 floor; verified baselines live in the
-[installation guide](INSTALLATION.md#platform-compatibility).
+[installation guide](installation.md#platform-compatibility).
 
 Initialization failure is not transactional restoration of prior state. Callers
 must handle a failed source before using the library. Sourcing does not change
@@ -43,7 +43,7 @@ A private emitter receives an explicit local frame offset so public log/setter
 calls identify the application without mutable global offsets. Application
 wrappers are not skipped. CLI records use explicit unavailable-location markers
 rather than suggesting the logger's internals identify the invoking script.
-See [source context](USAGE.md#source-context).
+See [source context](usage.md#source-context).
 
 Fixed printf formats keep message/context data separate from color escapes.
 Space joining uses local IFS rather than depending on caller state. Text retains
@@ -52,7 +52,7 @@ literal multiline content; JSON provides single-line framing for untrusted data.
 The JSON serializer stays in Bash to avoid a language-package/runtime dependency.
 Byte-wise UTF-8 validation gives explicit malformed-input failure, at the cost of
 CPU time for long strings. jq is an independent test/consumer oracle. See the
-[JSON reference](CONFIGURATION.md#json-lines) for schema and encoding details.
+[JSON reference](configuration.md#json-lines) for schema and encoding details.
 
 ## Predictable destinations
 
@@ -69,7 +69,7 @@ File logging duplicates records and attempts destinations independently: a faile
 stream should not prevent a useful file copy, or vice versa. No rollback can undo
 bytes already written. Per-event append keeps file handling small; rotation,
 retention, locking, and transactional delivery remain external responsibilities.
-Detailed failure semantics live in the [file reference](CONFIGURATION.md#file-logging).
+Detailed failure semantics live in the [file reference](configuration.md#file-logging).
 
 ## Documentation and maintenance
 

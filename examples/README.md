@@ -26,7 +26,7 @@ LOG_LEVEL=DEBUG bash examples/run_command.sh -- printf '%s\n' 'debug run'
 LOGSHURU_FORMAT=json bash examples/run_command.sh -- printf '%s\n' 'JSON run'
 ```
 
-Normal [logshuru settings](../docs/CONFIGURATION.md) apply. A nonempty
+Normal [logshuru settings](../docs/configuration.md) apply. A nonempty
 `LOGSHURU_OUTPUT` explicitly overrides the example's stderr default;
 `stdout`/`split` can mix logger records with data.
 The default is scoped to the runner's logger initialization: it is not introduced
@@ -61,8 +61,8 @@ supervisor to manage cancellation of the entire process group. Best-effort loggi
 does not guarantee cleanup or completion records when interrupted.
 
 The application chooses this policy; the logger itself still reports write
-failures. See the [usage guide](../docs/USAGE.md#strict-mode-and-exit-statuses) for
-library status semantics and [design decisions](../docs/DESIGN.md) for rationale.
+failures. See the [usage guide](../docs/usage.md#strict-mode-and-exit-statuses) for
+library status semantics and [design decisions](../docs/design.md) for rationale.
 
 The example introduces no retry, batching, output-file management, or background
 process supervision. Domain-specific scripts and workflow integration belong in

@@ -1,10 +1,12 @@
 # logshuru
 
+[![CI](https://github.com/mubeenomics/logshuru/actions/workflows/ci.yml/badge.svg)](https://github.com/mubeenomics/logshuru/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/mubeenomics/logshuru)](https://github.com/mubeenomics/logshuru/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A general-purpose Bash logger, inspired by Python's
 [loguru](https://github.com/Delgan/loguru). Use it as a CLI or source it in your
 scripts for colored text or JSON Lines with timestamps and caller context.
-
-**Current release: [v2.0.0](https://github.com/mubeenomics/logshuru/releases/tag/v2.0.0)**
 
 ## Features
 
@@ -18,7 +20,7 @@ scripts for colored text or JSON Lines with timestamps and caller context.
 
 **Bash 4.2+** and **GNU-compatible `date`** with millisecond formatting (`%3N`).
 Default macOS Bash 3.2 and BSD date do not meet these requirements. See
-[installation and platform details](docs/INSTALLATION.md).
+[installation and platform details](docs/installation.md).
 
 ## Install
 
@@ -42,7 +44,7 @@ bin directory. Run this block in Bash:
 ```
 
 Add `$HOME/.local/bin` to PATH for CLI use. For commit-pinned downloads, checkout
-installation, and environment checks, see the [installation guide](docs/INSTALLATION.md).
+installation, and environment checks, see the [installation guide](docs/installation.md).
 
 ## Quick start
 
@@ -77,7 +79,7 @@ Library calls report the application file, immediate caller function, and line:
 ```
 
 Public functions are `log`, `set_log_level`, and `get_log_level`.
-See the [usage guide](docs/USAGE.md) for arguments, strict mode, child shells,
+See the [usage guide](docs/usage.md) for arguments, strict mode, child shells,
 source context, and recipes.
 
 ## Levels and configuration
@@ -107,7 +109,7 @@ LOGSHURU_OUTPUT=stderr logshuru INFO "Keep stdout available for data"
 LOGSHURU_FORMAT=json logshuru INFO "Machine-readable event"
 ```
 
-The [configuration reference](docs/CONFIGURATION.md) covers defaults, validation,
+The [configuration reference](docs/configuration.md) covers defaults, validation,
 precedence, stream routing, colors, timestamps, file failures, and JSON schema.
 
 ## Important behavior
@@ -125,16 +127,27 @@ precedence, stream routing, colors, timestamps, file failures, and JSON schema.
 
 ## Documentation
 
-- [Installation](docs/INSTALLATION.md) — downloads, checksums, dependencies, platforms.
-- [Usage](docs/USAGE.md) — CLI/library APIs, statuses, strict mode, context, recipes.
-- [Configuration](docs/CONFIGURATION.md) — full settings and output reference.
-- [Command-runner example](examples/README.md) — lifecycle logs around an arbitrary command.
-- [Design](docs/DESIGN.md) — rationale and implementation boundaries.
-- [Contributing](CONTRIBUTING.md) — development tools, tests, formatting, and CI.
-- [Release procedure](RELEASING.md)
+- [Installation](docs/installation.md): downloads, checksums, dependencies, platforms.
+- [Usage](docs/usage.md): CLI/library APIs, statuses, strict mode, context, recipes.
+- [Configuration](docs/configuration.md): full settings and output reference.
+- [Command-runner example](examples/README.md): lifecycle logs around an arbitrary command.
+- [Design](docs/design.md): rationale and implementation boundaries.
+- [Contributing](CONTRIBUTING.md): development tools, tests, formatting, and CI.
+- [Release procedure](RELEASING.md): versioning, tagging, and publishing releases.
 
-Contributions are welcome. logshuru stays general-purpose; domain-specific
-workflow logic belongs in the applications using it.
+## Support
+
+Report bugs or ask questions at
+[github.com/mubeenomics/logshuru/issues](https://github.com/mubeenomics/logshuru/issues).
+Include the output of `bash --version` and `date --version`, and a minimal script
+that reproduces the problem.
+
+## Contributing
+
+Contributions are welcome. Before opening a pull request, read
+[CONTRIBUTING.md](CONTRIBUTING.md) for development tools, tests, formatting,
+and CI. logshuru stays general-purpose; domain-specific workflow logic belongs
+in the applications using it.
 
 ## Acknowledgments
 
